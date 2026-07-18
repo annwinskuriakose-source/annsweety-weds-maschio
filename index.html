@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maschio &amp; Ann Sweety — September 24, 2026</title>
+    <meta name="description"
+        content="You are joyfully invited to celebrate the wedding of Maschio Silvester and Ann Sweety Saju on September 24, 2026, at the Cathedral Church of The Redemption, New Delhi.">
+    <meta name="theme-color" content="#f8ead0">
+
+    <!-- Typography: Fraunces (editorial display serif) + Manrope (grotesque sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@300..700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8D%3C/text%3E%3C/svg%3E">
+
+    <!-- Open Graph / Social Share Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Maschio &amp; Ann Sweety — Wedding Invitation">
+    <meta property="og:description"
+        content="You are joyfully invited to celebrate the wedding of Maschio Silvester and Ann Sweety Saju on September 24, 2026, at the Cathedral Church of The Redemption, New Delhi.">
+    <meta property="og:image"
+        content="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Maschio &amp; Ann Sweety — Wedding Invitation">
+    <meta name="twitter:description"
+        content="You are joyfully invited to celebrate the wedding of Maschio Silvester and Ann Sweety Saju on September 24, 2026, at the Cathedral Church of The Redemption, New Delhi.">
+    <meta name="twitter:image"
+        content="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop">
+
+    <!-- Wedding content configuration -->
+    <script src="config.js"></script>
+
+    <noscript>
+        <style>
+            #preloader,
+            #cursor-dot,
+            #cursor-ring {
+                display: none;
+            }
+        </style>
+    </noscript>
+</head>
+
+<body>
+
+    <!-- PRELOADER -->
+    <div id="preloader" aria-hidden="true">
+        <div class="preloader-center">
+            <p class="preloader-monogram" data-bind="initials">M &amp; A</p>
+            <p class="preloader-count"><span id="preloader-num">0</span></p>
+        </div>
+        <div class="preloader-curtain curtain-a"></div>
+        <div class="preloader-curtain curtain-b"></div>
+    </div>
+
+    <!-- THREE.JS SILK BACKDROP (visible behind hero & footer) -->
+    <canvas id="silk-canvas" aria-hidden="true"></canvas>
+
+    <!-- CUSTOM CURSOR (fine pointers only) -->
+    <div id="cursor-dot" aria-hidden="true"></div>
+    <div id="cursor-ring" aria-hidden="true"></div>
+
+    <!-- FIXED HEADER -->
+    <header id="site-nav" class="site-nav">
+        <a class="nav-monogram" href="#hero" data-bind="initials">M &amp; A</a>
+        <nav class="nav-links" aria-label="Sections">
+            <a href="#invitation" class="nav-link">Invitation</a>
+            <a href="#gallery" class="nav-link">Gallery</a>
+            <a href="#itinerary" class="nav-link">Itinerary</a>
+            <a href="#guestbook" class="nav-link">Wishes</a>
+        </nav>
+        <div class="nav-right">
+            <a href="#rsvp" class="nav-rsvp-btn"><span>RSVP</span></a>
+            <button id="menu-toggle" class="menu-toggle" aria-label="Open menu" aria-expanded="false"
+                aria-controls="menu-overlay">
+                <span class="menu-bar"></span>
+                <span class="menu-bar"></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- FULLSCREEN MENU -->
+    <div id="menu-overlay" class="menu-overlay" aria-hidden="true">
+        <nav class="menu-nav" aria-label="Menu">
+            <a href="#invitation" class="menu-link"><span class="menu-index">01</span>Invitation</a>
+            <a href="#countdown" class="menu-link"><span class="menu-index">02</span>Countdown</a>
+            <a href="#gallery" class="menu-link"><span class="menu-index">03</span>Gallery</a>
+            <a href="#itinerary" class="menu-link"><span class="menu-index">04</span>Itinerary</a>
+            <a href="#rsvp" class="menu-link"><span class="menu-index">05</span>RSVP</a>
+            <a href="#guestbook" class="menu-link"><span class="menu-index">06</span>Wishes</a>
+        </nav>
+        <p class="menu-footer"><span data-bind="weddingDateText">September 24, 2026</span> · New Delhi</p>
+    </div>
+
+    <!-- MUSIC TOGGLE -->
+    <button id="music-toggle" class="music-toggle" aria-label="Play ambient music" aria-pressed="false">
+        <span class="eq-bar"></span>
+        <span class="eq-bar"></span>
+        <span class="eq-bar"></span>
+        <span class="eq-bar"></span>
+    </button>
+
+    <main id="main">
+
+        <!-- HERO -->
+        <section id="hero" class="hero">
+            <div class="hero-inner">
+                <p class="hero-eyebrow reveal-hero">The Wedding of</p>
+                <h1 class="hero-title" aria-label="Maschio and Ann Sweety">
+                    <span class="hero-line" data-split id="hero-name-groom">Maschio</span>
+                    <span class="hero-amp-row" aria-hidden="true">
+                        <span class="hero-rule reveal-hero"></span>
+                        <span class="hero-amp reveal-hero">&amp;</span>
+                        <span class="hero-rule reveal-hero"></span>
+                    </span>
+                    <span class="hero-line" data-split id="hero-name-bride">Ann Sweety</span>
+                </h1>
+                <div class="hero-meta reveal-hero">
+                    <span data-bind="weddingDateText">September 24, 2026</span>
+                    <span class="meta-dot" aria-hidden="true"></span>
+                    <span>Cathedral Church of The Redemption</span>
+                    <span class="meta-dot" aria-hidden="true"></span>
+                    <span>New Delhi</span>
+                </div>
+            </div>
+            <div class="hero-scroll-cue reveal-hero" aria-hidden="true">
+                <span class="cue-label">Scroll</span>
+                <span class="cue-line"></span>
+            </div>
+        </section>
+
+        <!-- MARQUEE DIVIDER -->
+        <div class="marquee" aria-hidden="true">
+            <div class="marquee-track" id="marquee-track">
+                <!-- populated by script -->
+            </div>
+        </div>
+
+        <!-- INVITATION -->
+        <section id="invitation" class="section invitation">
+            <div class="section-head">
+                <p class="section-eyebrow" data-reveal>No. 01 — The Invitation</p>
+            </div>
+            <div class="invitation-grid">
+                <div class="invitation-display">
+                    <h2 class="display-title" data-reveal-lines>
+                        <span class="dt-line">Together</span>
+                        <span class="dt-line">with our</span>
+                        <span class="dt-line"><em>families</em></span>
+                    </h2>
+                </div>
+                <div class="invitation-copy">
+                    <p class="lead" data-reveal data-bind="cardInviteMsg">You are cordially invited to share in our
+                        joy.</p>
+                    <div class="parents" data-reveal>
+                        <p><strong>Maschio Silvester</strong><br>son of Late Stanislaus Silvester &amp; Annie Muscreen
+                        </p>
+                        <p class="parents-amp" aria-hidden="true">&amp;</p>
+                        <p><strong>Ann Sweety Saju</strong><br>daughter of Saju K. Kuriakose &amp; Seeba Saju</p>
+                    </div>
+                    <blockquote class="verse" data-reveal>
+                        <p>&ldquo;Two are better than one; and a threefold cord is not quickly broken.&rdquo;</p>
+                        <cite>— Ecclesiastes 4:9, 12</cite>
+                    </blockquote>
+                </div>
+            </div>
+        </section>
+
+        <!-- COUNTDOWN -->
+        <section id="countdown" class="section countdown">
+            <div class="section-head">
+                <p class="section-eyebrow" data-reveal>No. 02 — The Countdown</p>
+                <h2 class="section-title" data-reveal-lines><span class="dt-line">Until we say</span><span
+                        class="dt-line"><em>&ldquo;I do&rdquo;</em></span></h2>
+            </div>
+            <div class="countdown-row" data-reveal role="timer" aria-label="Countdown to the wedding">
+                <div class="count-unit">
+                    <span class="count-num" id="cd-days">000</span>
+                    <span class="count-label">Days</span>
+                </div>
+                <span class="count-sep" aria-hidden="true">:</span>
+                <div class="count-unit">
+                    <span class="count-num" id="cd-hours">00</span>
+                    <span class="count-label">Hours</span>
+                </div>
+                <span class="count-sep" aria-hidden="true">:</span>
+                <div class="count-unit">
+                    <span class="count-num" id="cd-minutes">00</span>
+                    <span class="count-label">Minutes</span>
+                </div>
+                <span class="count-sep" aria-hidden="true">:</span>
+                <div class="count-unit">
+                    <span class="count-num" id="cd-seconds">00</span>
+                    <span class="count-label">Seconds</span>
+                </div>
+            </div>
+            <p class="countdown-note" data-reveal><span data-bind="weddingDateText">September 24, 2026</span> — save
+                the date</p>
+        </section>
+
+        <!-- GALLERY (pinned horizontal scroll on desktop, swipe on mobile) -->
+        <section id="gallery" class="gallery-section">
+            <div class="gallery-pin" id="gallery-pin">
+                <div class="gallery-head">
+                    <p class="section-eyebrow" data-reveal>No. 03 — The Gallery</p>
+                    <h2 class="section-title" data-reveal-lines><span class="dt-line">Shining</span><span
+                            class="dt-line"><em>stars</em></span></h2>
+                    <p class="gallery-hint" data-reveal aria-hidden="true">Drag / scroll →</p>
+                </div>
+                <div class="gallery-track" id="gallery-track">
+                    <figure class="gallery-item" data-index="0">
+                        <div class="gallery-img-wrap">
+                            <img src="images/shining-star-01.jpg" alt="Her smile" loading="lazy" decoding="async"
+                                width="1152" height="2048">
+                        </div>
+                        <figcaption><span>01</span> Her smile</figcaption>
+                    </figure>
+                    <figure class="gallery-item" data-index="1">
+                        <div class="gallery-img-wrap">
+                            <img src="images/shining-star-02.jpg" alt="By the sea" loading="lazy" decoding="async"
+                                width="960" height="1280">
+                        </div>
+                        <figcaption><span>02</span> By the sea</figcaption>
+                    </figure>
+                    <div class="gallery-endcard">
+                        <p>and the best<br><em>is yet to come</em></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ITINERARY -->
+        <section id="itinerary" class="section itinerary">
+            <div class="section-head">
+                <p class="section-eyebrow" data-reveal>No. 04 — The Day</p>
+                <h2 class="section-title" data-reveal-lines><span class="dt-line">One day,</span><span
+                        class="dt-line"><em>two celebrations</em></span></h2>
+            </div>
+
+            <div class="event-list">
+                <article class="event-row" data-reveal>
+                    <div class="event-time">
+                        <span class="event-clock" id="ceremony-time-short">4:00 PM</span>
+                        <span class="event-day">Thursday</span>
+                    </div>
+                    <div class="event-body">
+                        <h3 id="ceremony-title">Wedding Ceremony</h3>
+                        <p class="event-venue" id="ceremony-venue">Cathedral Church of The Redemption</p>
+                        <p class="event-address" id="ceremony-address">1 Church Road, North Avenue, New Delhi 110001
+                        </p>
+                        <div class="event-actions">
+                            <a class="text-btn" id="ceremony-map-link"
+                                href="https://maps.google.com/maps?q=Cathedral+Church+of+The+Redemption+1+Church+Road+North+Avenue+New+Delhi+110001"
+                                target="_blank" rel="noopener noreferrer">View map<svg viewBox="0 0 24 24"
+                                    aria-hidden="true">
+                                    <path d="M7 17L17 7M17 7H8M17 7v9" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg></a>
+                            <button class="text-btn" type="button" onclick="addToCalendar('ceremony')">Add to
+                                calendar<svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" />
+                                </svg></button>
+                        </div>
+                    </div>
+                    <span class="event-num" aria-hidden="true">I</span>
+                </article>
+
+                <article class="event-row" data-reveal>
+                    <div class="event-time">
+                        <span class="event-clock" id="reception-time-short">7:00 PM</span>
+                        <span class="event-day">Thursday</span>
+                    </div>
+                    <div class="event-body">
+                        <h3 id="reception-title">Grand Reception</h3>
+                        <p class="event-venue" id="reception-venue">Cathedral Church of The Redemption</p>
+                        <p class="event-address" id="reception-address">1 Church Road, North Avenue, New Delhi 110001
+                        </p>
+                        <div class="event-actions">
+                            <a class="text-btn" id="reception-map-link"
+                                href="https://maps.google.com/maps?q=Cathedral+Church+of+The+Redemption+1+Church+Road+North+Avenue+New+Delhi+110001"
+                                target="_blank" rel="noopener noreferrer">View map<svg viewBox="0 0 24 24"
+                                    aria-hidden="true">
+                                    <path d="M7 17L17 7M17 7H8M17 7v9" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg></a>
+                            <button class="text-btn" type="button" onclick="addToCalendar('reception')">Add to
+                                calendar<svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" />
+                                </svg></button>
+                        </div>
+                    </div>
+                    <span class="event-num" aria-hidden="true">II</span>
+                </article>
+            </div>
+
+            <div class="map-frame" data-reveal>
+                <iframe
+                    src="https://maps.google.com/maps?q=Cathedral+Church+of+The+Redemption+1+Church+Road+North+Avenue+New+Delhi+110001&output=embed&z=16"
+                    width="100%" height="380" style="border:0;" allowfullscreen="" loading="lazy"
+                    title="Cathedral Church of The Redemption, New Delhi"></iframe>
+            </div>
+        </section>
+
+        <!-- RSVP -->
+        <section id="rsvp" class="section rsvp">
+            <div class="rsvp-grid">
+                <div class="rsvp-intro">
+                    <p class="section-eyebrow on-dark" data-reveal>No. 05 — The Answer</p>
+                    <h2 class="rsvp-title" data-reveal-lines>
+                        <span class="dt-line">Will you</span>
+                        <span class="dt-line"><em>join us?</em></span>
+                    </h2>
+                    <p class="rsvp-deadline" data-reveal>Kindly respond by <strong
+                            data-bind="rsvpDeadlineText">September 1, 2026</strong></p>
+                    <p class="rsvp-note" data-reveal>Your presence is the greatest gift of all. Let us know if we
+                        should set a place for you beneath the September sky.</p>
+                </div>
+
+                <form id="rsvp-form" class="rsvp-form" novalidate>
+                    <div class="field" data-reveal>
+                        <label for="guest-name">Full name</label>
+                        <input type="text" id="guest-name" name="name" required autocomplete="name"
+                            placeholder="Johnathan Smith">
+                    </div>
+                    <div class="field" data-reveal>
+                        <label for="guest-email">Email address</label>
+                        <input type="email" id="guest-email" name="email" required autocomplete="email"
+                            placeholder="john@example.com">
+                    </div>
+
+                    <fieldset class="field" data-reveal>
+                        <legend>Will you attend?</legend>
+                        <div class="segmented" role="radiogroup" aria-label="Will you attend?">
+                            <label class="segment">
+                                <input type="radio" name="attendance" value="attending" checked>
+                                <span class="segment-face">Joyfully accept</span>
+                            </label>
+                            <label class="segment">
+                                <input type="radio" name="attendance" value="declined">
+                                <span class="segment-face">Regretfully decline</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <div id="rsvp-details" class="rsvp-details">
+                        <div class="field-row">
+                            <div class="field" data-reveal>
+                                <label id="guest-count-label" for="guest-count-value">Guests</label>
+                                <div class="stepper">
+                                    <button type="button" class="step-btn" id="guest-minus"
+                                        aria-label="Fewer guests">−</button>
+                                    <output class="step-value" id="guest-count-value" aria-labelledby="guest-count-label"
+                                        aria-live="polite">1</output>
+                                    <button type="button" class="step-btn" id="guest-plus"
+                                        aria-label="More guests">+</button>
+                                </div>
+                            </div>
+                            <div class="field" data-reveal>
+                                <label for="diet-pref">Dietary preference</label>
+                                <div class="select-wrap">
+                                    <select id="diet-pref" name="diet">
+                                        <option value="none">No restrictions</option>
+                                        <option value="vegetarian">Vegetarian</option>
+                                        <option value="vegan">Vegan</option>
+                                        <option value="gluten-free">Gluten-free</option>
+                                        <option value="other">Other / allergy</option>
+                                    </select>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field" data-reveal>
+                        <label for="wishes">A wish for the couple <span class="optional">(optional)</span></label>
+                        <textarea id="wishes" name="wishes" rows="3"
+                            placeholder="Share a warm wish or note…"></textarea>
+                    </div>
+
+                    <button type="submit" class="rsvp-submit" data-reveal>
+                        <span class="rsvp-submit-label">Send my answer</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 12h14m0 0l-6-6m6 6l-6 6" fill="none" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                    <p class="rsvp-form-hint" id="rsvp-form-hint" data-reveal>Responses are saved on this device<span
+                            id="webhook-hint"></span>.</p>
+                </form>
+            </div>
+        </section>
+
+        <!-- GUESTBOOK -->
+        <section id="guestbook" class="section guestbook">
+            <div class="section-head">
+                <p class="section-eyebrow" data-reveal>No. 06 — The Wishes</p>
+                <h2 class="section-title" data-reveal-lines><span class="dt-line">Words from</span><span
+                        class="dt-line"><em>our loved ones</em></span></h2>
+            </div>
+            <div class="wish-wall" id="wish-wall">
+                <!-- populated by script -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p class="footer-eyebrow">See you there</p>
+        <p class="footer-names" aria-hidden="true"><span data-bind="groomName">Maschio</span><em>&amp;</em><span
+                data-bind="brideName">Ann Sweety</span></p>
+        <p class="footer-meta"><span data-bind="weddingDateText">September 24, 2026</span> · New Delhi, India</p>
+        <div class="footer-bottom">
+            <p>Made with love</p>
+            <button type="button" class="admin-trigger" id="admin-trigger">Guest list</button>
+        </div>
+    </footer>
+
+    <!-- LIGHTBOX -->
+    <div id="lightbox" class="lightbox" aria-hidden="true" role="dialog" aria-label="Photo viewer">
+        <button class="lightbox-close" id="lightbox-close" aria-label="Close photo viewer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" />
+            </svg>
+        </button>
+        <button class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+        </button>
+        <figure class="lightbox-figure">
+            <img id="lightbox-img" alt="">
+            <figcaption id="lightbox-caption"></figcaption>
+        </figure>
+        <button class="lightbox-nav next" id="lightbox-next" aria-label="Next photo">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- RSVP SUCCESS MODAL -->
+    <div id="rsvp-modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true"
+        aria-labelledby="rsvp-modal-title">
+        <div class="modal-card">
+            <p class="modal-monogram" data-bind="initials">M &amp; A</p>
+            <h2 id="rsvp-modal-title">Thank you</h2>
+            <p id="rsvp-success-msg">Your RSVP has been received. We can't wait to celebrate with you!</p>
+            <button type="button" class="modal-btn" id="rsvp-modal-close">Wonderful</button>
+        </div>
+    </div>
+
+    <!-- ADMIN GUEST LIST MODAL -->
+    <div id="admin-modal" class="modal admin-modal" aria-hidden="true" role="dialog" aria-modal="true"
+        aria-labelledby="admin-modal-title">
+        <div class="modal-card admin-card">
+            <button type="button" class="admin-close" id="admin-close" aria-label="Close dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" />
+                </svg>
+            </button>
+            <h2 id="admin-modal-title">Guest list</h2>
+
+            <!-- LOCK SCREEN — shown until the passcode is verified -->
+            <form id="admin-lock" class="admin-lock" novalidate>
+                <p class="admin-lock-text">This dashboard is private.<br>Enter the passcode to view the guest list.</p>
+                <div class="admin-lock-row">
+                    <input type="password" id="admin-passcode" class="admin-passcode-input" data-autofocus
+                        autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required>
+                    <button type="submit" class="modal-btn admin-unlock-btn" id="admin-unlock-btn">Unlock</button>
+                </div>
+                <p class="admin-lock-error" id="admin-lock-error" role="alert" hidden></p>
+            </form>
+
+            <!-- DASHBOARD — revealed after unlock -->
+            <div id="admin-dashboard" hidden>
+                <p class="admin-source" id="admin-source"></p>
+                <div class="admin-stats" id="admin-stats">
+                    <!-- populated by script -->
+                </div>
+                <div class="admin-actions">
+                    <button type="button" class="text-btn" id="admin-refresh-btn" hidden>Refresh<svg
+                            viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg></button>
+                    <button type="button" class="text-btn" id="export-xlsx-btn">Export Excel<svg viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg></button>
+                    <button type="button" class="text-btn" id="export-csv-btn">Export CSV<svg viewBox="0 0 24 24"
+                            aria-hidden="true">
+                            <path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg></button>
+                    <button type="button" class="text-btn danger" id="clear-rsvps-btn">Clear guest list<svg
+                            viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 7h14M9 7V5h6v2m-8 0l1 13h8l1-13" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg></button>
+                </div>
+
+                <!-- CLEAR CONFIRMATION — deleting requires re-entering the passcode -->
+                <form class="admin-clear-confirm" id="admin-clear-confirm" novalidate hidden>
+                    <p class="admin-clear-text">This permanently deletes every RSVP in the guest list.
+                        Re-enter the passcode to confirm.</p>
+                    <div class="admin-lock-row">
+                        <input type="password" id="admin-clear-passcode" class="admin-passcode-input"
+                            autocomplete="current-password" placeholder="Passcode"
+                            aria-label="Passcode to confirm clearing the guest list" required>
+                        <button type="submit" class="modal-btn admin-clear-delete-btn"
+                            id="admin-clear-delete-btn">Delete</button>
+                        <button type="button" class="text-btn" id="admin-clear-cancel-btn">Cancel</button>
+                    </div>
+                    <p class="admin-lock-error" id="admin-clear-error" role="alert" hidden></p>
+                </form>
+                <div class="table-scroll">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Guest</th>
+                                <th>Email</th>
+                                <th>Attending</th>
+                                <th>Guests</th>
+                                <th>Dietary</th>
+                                <th>Wishes</th>
+                                <th>When</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rsvp-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Libraries: GSAP + ScrollTrigger, Lenis smooth scroll, Three.js.
+         SRI-pinned; if any fails to load the page degrades to a static,
+         fully readable document (script.js feature-detects each one). -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+        integrity="sha512-7eHRwcbYkK4d9g/6tD/mhkf++eoTHwpNM9woBxtPUBWm67zeAfFC+HrdoE2GanKeocly/VxeLvIqwvCdk7qScg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
+        integrity="sha512-onMTRKJBKz8M1TnqqDuGBlowlH0ohFzMXYRNebz+yOcc5TQr/zAKsthzhuv0hiyUKEiQEQXEynnXCvNTOk50dg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"
+        integrity="sha384-tKsJDT6PlUI0pSBt9/sBKJluKgA19/a6mBrDsZaXotLB4ZYfMGM6xt6/WgGpYhTm"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="script.js"></script>
+
+    <!-- Failsafe: if script.js never boots (e.g. it failed to download on a
+         flaky connection), remove the opaque preloader curtain so the page
+         is never left permanently covered. -->
+    <script>
+        setTimeout(function () {
+            if (!window.__weddingBooted) {
+                var p = document.getElementById("preloader");
+                if (p) p.style.display = "none";
+                document.body.classList.remove("no-scroll");
+            }
+        }, 6000);
+    </script>
+</body>
+
+</html>
