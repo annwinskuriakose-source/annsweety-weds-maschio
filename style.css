@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCHIO & ANN SWEETY — "THE GOLDEN HOUR"
+   ANN SWEETY & MASCHIO — "THE GOLDEN HOUR"
    A modern editorial wedding invitation.
    Warm porcelain paper, espresso ink, champagne bronze.
    Fraunces (display serif) + Manrope (grotesque sans).
@@ -911,145 +911,12 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 }
 
 /* ============================================================
-   GALLERY — pinned horizontal scroll
-   ============================================================ */
-.gallery-section {
-    background: var(--paper);
-    overflow: clip;
-}
-
-.gallery-pin {
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: clamp(4rem, 10vh, 6rem) 0;
-}
-
-.gallery-head {
-    padding: 0 var(--pad-x);
-    max-width: 1400px;
-    margin-bottom: clamp(2rem, 5vh, 3.5rem);
-    position: relative;
-}
-
-.gallery-hint {
-    margin-top: 1.2rem;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-}
-
-.gallery-track {
-    display: flex;
-    align-items: flex-start;
-    gap: clamp(1.2rem, 3vw, 3rem);
-    padding: 0 var(--pad-x);
-    width: max-content;
-    will-change: transform;
-}
-
-.gallery-item {
-    flex-shrink: 0;
-    width: clamp(240px, 30vw, 460px);
-    perspective: 1100px;
-}
-
-.gallery-item:nth-child(even) {
-    margin-top: clamp(1.5rem, 5vh, 4rem);
-}
-
-.gallery-img-wrap {
-    overflow: hidden;
-    aspect-ratio: 3 / 4;
-    background: var(--paper-2);
-    transform-style: preserve-3d;
-    will-change: transform;
-    cursor: zoom-in;
-}
-
-.gallery-img-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scale(1.08);
-    transition: transform 1.2s var(--ease-out);
-}
-
-.gallery-item:hover .gallery-img-wrap img {
-    transform: scale(1);
-}
-
-.gallery-item figcaption {
-    margin-top: 0.9rem;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    display: flex;
-    gap: 0.9rem;
-}
-
-.gallery-item figcaption span {
-    color: var(--bronze);
-}
-
-.gallery-endcard {
-    flex-shrink: 0;
-    width: clamp(260px, 32vw, 480px);
-    aspect-ratio: 3 / 4;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    border: 1px solid var(--line);
-}
-
-.gallery-endcard p {
-    font-family: var(--font-serif);
-    font-weight: 330;
-    font-size: clamp(1.5rem, 3vw, 2.4rem);
-    line-height: 1.3;
-}
-
-.gallery-endcard em {
-    color: var(--bronze);
-}
-
-/* mobile: native swipe instead of pin */
-@media (max-width: 899px) {
-    .gallery-pin {
-        min-height: 0;
-    }
-
-    .gallery-track {
-        width: auto;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 1rem;
-        scrollbar-width: none;
-    }
-
-    .gallery-track::-webkit-scrollbar {
-        display: none;
-    }
-
-    .gallery-item,
-    .gallery-endcard {
-        scroll-snap-align: center;
-        width: min(72vw, 340px);
-    }
-}
-
-/* ============================================================
    ITINERARY
    ============================================================ */
+/* base paper again: the deeper countdown band above needs to read as its
+   own section, not run straight into the itinerary */
 .itinerary {
-    background: var(--paper-2);
+    background: var(--paper);
 }
 
 .event-list {
@@ -1281,7 +1148,7 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 }
 
 .field input[type="text"],
-.field input[type="email"],
+.field input[type="tel"],
 .field textarea {
     background: transparent;
     border: none;
@@ -1310,12 +1177,6 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 .field textarea:focus {
     outline: none;
     border-bottom-color: var(--bronze-soft);
-}
-
-.field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(1.5rem, 3vw, 2.5rem);
 }
 
 /* segmented attendance control */
@@ -1420,49 +1281,6 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     min-width: 1.4ch;
     text-align: center;
     font-variant-numeric: tabular-nums;
-}
-
-/* select */
-.select-wrap {
-    position: relative;
-}
-
-.select-wrap select {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 100%;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--line-dark);
-    color: var(--paper);
-    font-family: var(--font-serif);
-    font-weight: 350;
-    font-size: clamp(1.1rem, 2vw, 1.35rem);
-    padding: 0.55em 2em 0.55em 0;
-    border-radius: 0;
-    cursor: pointer;
-    transition: border-color 0.4s;
-}
-
-.select-wrap select:focus {
-    outline: none;
-    border-bottom-color: var(--bronze-soft);
-}
-
-.select-wrap select option {
-    color: var(--ink);
-    background: var(--paper);
-}
-
-.select-wrap svg {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    pointer-events: none;
-    color: rgba(243, 237, 225, 0.5);
 }
 
 /* submit */
@@ -1654,109 +1472,6 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 .admin-trigger:hover {
     color: var(--bronze);
     border-color: var(--bronze);
-}
-
-/* ============================================================
-   LIGHTBOX
-   ============================================================ */
-.lightbox {
-    position: fixed;
-    inset: 0;
-    z-index: 160;
-    background: rgba(18, 15, 11, 0.94);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.45s, visibility 0.45s;
-}
-
-.lightbox.open {
-    opacity: 1;
-    visibility: visible;
-}
-
-.lightbox-figure {
-    max-width: min(88vw, 1100px);
-    max-height: 82vh;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.lightbox-figure img {
-    max-width: 100%;
-    max-height: 74vh;
-    object-fit: contain;
-}
-
-.lightbox-figure figcaption {
-    color: rgba(243, 237, 225, 0.7);
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    text-align: center;
-}
-
-.lightbox-close {
-    position: absolute;
-    top: clamp(1rem, 3vw, 2rem);
-    right: clamp(1rem, 3vw, 2rem);
-    width: 48px;
-    height: 48px;
-    border: 1px solid var(--line-dark);
-    border-radius: 50%;
-    color: var(--paper);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.3s, transform 0.3s;
-}
-
-.lightbox-close:hover {
-    border-color: var(--bronze-soft);
-    transform: rotate(90deg);
-}
-
-.lightbox-close svg {
-    width: 18px;
-    height: 18px;
-}
-
-.lightbox-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 52px;
-    height: 52px;
-    border: 1px solid var(--line-dark);
-    border-radius: 50%;
-    color: var(--paper);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.3s, background 0.3s;
-    z-index: 2;
-}
-
-.lightbox-nav:hover {
-    border-color: var(--bronze-soft);
-    background: rgba(243, 237, 225, 0.06);
-}
-
-.lightbox-nav svg {
-    width: 18px;
-    height: 18px;
-}
-
-.lightbox-nav.prev {
-    left: clamp(0.6rem, 3vw, 2rem);
-}
-
-.lightbox-nav.next {
-    right: clamp(0.6rem, 3vw, 2rem);
 }
 
 /* ============================================================
@@ -2169,11 +1884,6 @@ body.menu-open .menu-toggle .menu-bar:last-child {
         display: none;
     }
 
-    .field-row {
-        grid-template-columns: 1fr;
-        gap: 1.8rem;
-    }
-
     .rsvp-submit {
         align-self: stretch;
         justify-content: center;
@@ -2199,14 +1909,6 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 
     .admin-clear-confirm .admin-passcode-input {
         flex-basis: 100%;
-    }
-
-    .lightbox-nav.prev {
-        left: 0.4rem;
-    }
-
-    .lightbox-nav.next {
-        right: 0.4rem;
     }
 }
 

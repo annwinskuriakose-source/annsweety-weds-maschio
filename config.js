@@ -4,7 +4,9 @@
 const WEDDING_CONFIG = {
     groomName: "Maschio",
     brideName: "Ann Sweety",
-    initials: "M & A",
+    // The bride is named first everywhere on the page ("Ann Sweety weds
+    // Maschio"), so the monogram reads A & M.
+    initials: "A & M",
     cardInviteMsg: "You are cordially invited to share in our joy.",
     weddingDateText: "September 24, 2026",
     rsvpDeadlineText: "September 1, 2026",
@@ -13,7 +15,7 @@ const WEDDING_CONFIG = {
     // in any timezone see the same, correct time remaining. (The event times
     // below intentionally have NO offset — they are venue-local "wall clock"
     // times used for display and the calendar file.)
-    countdownTarget: "2026-09-24T16:00:00+05:30",
+    countdownTarget: "2026-09-24T17:00:00+05:30",
 
     // --- GUEST LIST BACKEND (recommended — see BACKEND_SETUP.md) ---
     // URL of your Google Apps Script web app (ends in "/exec"). When set:
@@ -32,7 +34,7 @@ const WEDDING_CONFIG = {
     // guest's own browser and is visible to anyone who views the page
     // source — treat it as a light deterrent, not real security. Once
     // backendUrl is set, this value is ignored entirely.
-    adminPasscode: "2026",
+    adminPasscode: "annwedsmaschio2026",
 
     // Optional extra: a generic form-backend endpoint (e.g. Formspree,
     // Getform) that receives a JSON copy of each RSVP — handy for email
@@ -42,20 +44,20 @@ const WEDDING_CONFIG = {
     events: {
         ceremony: {
             title: "Wedding Ceremony",
-            time: "Thursday, 4:00 PM – 5:00 PM",
+            time: "Thursday, 5:00 PM – 6:00 PM",
             venue: "Cathedral Church of The Redemption",
             address: "1 Church Road, North Avenue, New Delhi 110001",
             mapLink: "https://maps.google.com/maps?q=Cathedral+Church+of+The+Redemption+1+Church+Road+North+Avenue+New+Delhi+110001",
-            startISO: "2026-09-24T16:00:00",
-            endISO: "2026-09-24T17:00:00"
+            startISO: "2026-09-24T17:00:00",
+            endISO: "2026-09-24T18:00:00"
         },
         reception: {
             title: "Grand Reception",
-            time: "Thursday, 7:00 PM – 11:00 PM",
+            time: "Thursday, 7:30 PM – 11:00 PM",
             venue: "Cathedral Church of The Redemption",
             address: "1 Church Road, North Avenue, New Delhi 110001",
             mapLink: "https://maps.google.com/maps?q=Cathedral+Church+of+The+Redemption+1+Church+Road+North+Avenue+New+Delhi+110001",
-            startISO: "2026-09-24T19:00:00",
+            startISO: "2026-09-24T19:30:00",
             endISO: "2026-09-24T23:00:00"
         }
     }

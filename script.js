@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCHIO & ANN SWEETY — "THE GOLDEN HOUR"
+   ANN SWEETY & MASCHIO — "THE GOLDEN HOUR"
    A modern editorial wedding invitation.
 
    Motion:   GSAP + ScrollTrigger (choreography), Lenis (smooth
@@ -48,10 +48,15 @@
     // ============================================================
     // RSVP STORAGE
     // ============================================================
-    const DEFAULT_WISHES = [
-        { name: "Jessica & Michael", email: "", attendance: "attending", guests: 2, diet: "none", wishes: "Congratulations! We are so excited to see you two tie the knot. Wishing you a lifetime of love and happiness!", timestamp: "2026-07-08 14:32:00" },
-        { name: "Uncle David & Aunt Clara", email: "", attendance: "attending", guests: 2, diet: "none", wishes: "So happy to be there to witness your vows. Wishing you every blessing.", timestamp: "2026-07-06 09:12:00" },
-        { name: "Sophia Martinez", email: "", attendance: "attending", guests: 1, diet: "none", wishes: "May your life together be filled with joy, adventure, and lots of laughter!", timestamp: "2026-07-05 18:45:00" }
+    // Sample wishes, shown on the guestbook wall only while this device has
+    // no real ones yet. They are DISPLAY ONLY and are never written to the
+    // stored RSVP list — otherwise they would be counted as responses in
+    // the guest-list dashboard, land in the Excel/CSV exports, and come
+    // back every time the list is cleared.
+    const DEMO_WISHES = [
+        { name: "Vibhuti", phone: "", attendance: "attending", guests: 2, wishes: "Congratulations! We are so excited to see you two tie the knot. Wishing you a lifetime of love and happiness!", timestamp: "2026-07-08 14:32:00" },
+        { name: "Annwin", phone: "", attendance: "attending", guests: 2, wishes: "So happy to be there to witness your vows. Wishing you every blessing.", timestamp: "2026-07-06 09:12:00" },
+        { name: "Atulya", phone: "", attendance: "attending", guests: 1, wishes: "May your life together be filled with joy, adventure, and lots of laughter!", timestamp: "2026-07-05 18:45:00" }
     ];
 
     function getRSVPs() {
@@ -72,7 +77,12 @@
         }
     }
 
-    if (getRSVPs().length === 0) saveRSVPs(DEFAULT_WISHES);
+    // the same guest answering twice (a retry after a failed send, or a
+    // change of heart) updates their entry rather than adding a second one
+    function isSameGuest(a, b) {
+        return String(a.phone || "") === String(b.phone || "") &&
+            String(a.name || "").trim().toLowerCase() === String(b.name || "").trim().toLowerCase();
+    }
 
     // ============================================================
     // BACKEND CLIENT (Google Apps Script web app — BACKEND_SETUP.md)
@@ -131,7 +141,7 @@
         if (config.brideName) $("#hero-name-bride").textContent = config.brideName;
         if (config.groomName && config.brideName) {
             const heroTitle = $(".hero-title");
-            if (heroTitle) heroTitle.setAttribute("aria-label", config.groomName + " and " + config.brideName);
+            if (heroTitle) heroTitle.setAttribute("aria-label", config.brideName + " and " + config.groomName);
         }
 
         ["ceremony", "reception"].forEach(key => {
@@ -166,7 +176,7 @@
         // marquee: two identical chunks so the -50% keyframe loops seamlessly
         const track = $("#marquee-track");
         if (track) {
-            const names = (config.groomName || "Maschio") + " & " + (config.brideName || "Ann Sweety");
+            const names = (config.brideName || "Ann Sweety") + " & " + (config.groomName || "Maschio");
             const items = ["Save the date", config.weddingDateText || "September 24, 2026", names, "New Delhi", "<em>Celebrate with us</em>"];
             const chunkHTML = items.map(t => '<span class="marquee-item">' + t + '</span><span class="marquee-star">✦</span>').join("");
             track.innerHTML = '<div class="marquee-chunk">' + chunkHTML + '</div><div class="marquee-chunk">' + chunkHTML + '</div>';
@@ -548,106 +558,6 @@
     }
 
     // ============================================================
-    // GALLERY — pinned horizontal scroll (desktop only)
-    // ============================================================
-    function initGallery() {
-        if (!hasScrollTrigger || reducedMotion) return;
-        const mm = gsap.matchMedia();
-        mm.add("(min-width: 900px)", () => {
-            const track = $("#gallery-track");
-            const pin = $("#gallery-pin");
-            if (!track || !pin) return;
-            // clamp: with few items the track can be narrower than the viewport
-            const distance = () => Math.max(0, track.scrollWidth - window.innerWidth + 80);
-            const tween = gsap.to(track, {
-                x: () => -distance(),
-                ease: "none",
-                scrollTrigger: {
-                    trigger: pin,
-                    start: "top top",
-                    end: () => "+=" + distance(),
-                    scrub: 1,
-                    pin: true,
-                    anticipatePin: 1,
-                    invalidateOnRefresh: true
-                }
-            });
-            return () => { tween.scrollTrigger && tween.scrollTrigger.kill(); tween.kill(); gsap.set(track, { x: 0 }); };
-        });
-    }
-
-    // ============================================================
-    // LIGHTBOX
-    // ============================================================
-    const lightbox = $("#lightbox");
-    const lightboxImg = $("#lightbox-img");
-    const lightboxCaption = $("#lightbox-caption");
-    const galleryFigures = $$(".gallery-item");
-    let lightboxIndex = 0;
-
-    const photos = galleryFigures.map(fig => {
-        const img = $("img", fig);
-        const cap = $("figcaption", fig);
-        return {
-            src: img.src,
-            alt: img.alt,
-            caption: cap ? cap.textContent.trim() : ""
-        };
-    });
-
-    let lightboxReturnFocus = null;
-
-    function openLightbox(index) {
-        lightboxIndex = index;
-        updateLightbox();
-        lightboxReturnFocus = document.activeElement;
-        lightbox.classList.add("open");
-        lightbox.setAttribute("aria-hidden", "false");
-        scrollLock(true);
-        // deferred: the overlay is still visibility:hidden in the frame the
-        // class lands, and focus() on a hidden element is silently refused
-        setTimeout(() => $("#lightbox-close").focus(), 60);
-    }
-
-    function closeLightbox() {
-        lightbox.classList.remove("open");
-        lightbox.setAttribute("aria-hidden", "true");
-        scrollLock(false);
-        if (lightboxReturnFocus && document.contains(lightboxReturnFocus)) lightboxReturnFocus.focus();
-    }
-
-    function stepLightbox(dir) {
-        lightboxIndex = (lightboxIndex + dir + photos.length) % photos.length;
-        updateLightbox();
-    }
-
-    function updateLightbox() {
-        const p = photos[lightboxIndex];
-        lightboxImg.src = p.src;
-        lightboxImg.alt = p.alt;
-        lightboxCaption.textContent = p.caption;
-    }
-
-    galleryFigures.forEach((fig, i) => {
-        // the whole frame opens the lightbox, and is keyboard-operable
-        const wrap = $(".gallery-img-wrap", fig);
-        wrap.setAttribute("role", "button");
-        wrap.setAttribute("tabindex", "0");
-        wrap.setAttribute("aria-label", "View photo: " + photos[i].alt);
-        wrap.addEventListener("click", () => openLightbox(i));
-        wrap.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openLightbox(i);
-            }
-        });
-    });
-    $("#lightbox-close").addEventListener("click", closeLightbox);
-    $("#lightbox-prev").addEventListener("click", () => stepLightbox(-1));
-    $("#lightbox-next").addEventListener("click", () => stepLightbox(1));
-    lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
-
-    // ============================================================
     // COUNTDOWN
     // ============================================================
     function initCountdown() {
@@ -673,7 +583,7 @@
                 setVal(els.days, 0, 2); setVal(els.hours, 0, 2);
                 setVal(els.minutes, 0, 2); setVal(els.seconds, 0, 2);
                 const note = $(".countdown-note");
-                if (note) note.textContent = "The day has arrived — with love, " + (config.initials || "M & A");
+                if (note) note.textContent = "The day has arrived — with love, " + (config.initials || "A & M");
                 return;
             }
             setVal(els.days, Math.floor(diff / 86400000), 2);
@@ -692,7 +602,7 @@
     const detailsBlock = $("#rsvp-details");
     const guestValue = $("#guest-count-value");
     let guestCount = 1;
-    const GUEST_MAX = 5;
+    const GUEST_MAX = 10;
 
     function refreshStepper() {
         guestValue.textContent = String(guestCount);
@@ -704,10 +614,33 @@
     $("#guest-plus").addEventListener("click", () => { guestCount = Math.min(GUEST_MAX, guestCount + 1); refreshStepper(); });
     refreshStepper();
 
+    // Phone: a plain 10-digit local number, no country code. Anything else the
+    // guest types or pastes (spaces, dashes, brackets, a +91 prefix) is stripped
+    // as they go; when a pasted number carries a country code the last 10 digits
+    // are the ones we keep.
+    const phoneInput = $("#guest-phone");
+
+    function tenDigits(value) {
+        const digits = String(value).replace(/\D/g, "");
+        return digits.length > 10 ? digits.slice(-10) : digits;
+    }
+
+    phoneInput.addEventListener("input", () => {
+        const cleaned = tenDigits(phoneInput.value);
+        if (cleaned !== phoneInput.value) phoneInput.value = cleaned;
+    });
+
+    // Collapsing is a max-height/opacity transition, so the guest stepper is
+    // still in the tab order (and readable by screen readers) while it looks
+    // gone. `inert` takes the whole block out until it is shown again.
+    function collapseDetails(collapsed) {
+        detailsBlock.classList.toggle("collapsed", collapsed);
+        detailsBlock.inert = collapsed;
+    }
+
     $$('input[name="attendance"]', rsvpForm).forEach(radio => {
         radio.addEventListener("change", () => {
-            const declined = radio.value === "declined" && radio.checked;
-            detailsBlock.classList.toggle("collapsed", declined);
+            collapseDetails(radio.value === "declined" && radio.checked);
         });
     });
 
@@ -753,14 +686,16 @@
 
     rsvpForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        if (rsvpSending || !rsvpForm.reportValidity()) return;
+        if (rsvpSending) return;
+        // autofill can drop a formatted number in without firing "input"
+        phoneInput.value = tenDigits(phoneInput.value);
+        if (!rsvpForm.reportValidity()) return;
 
         const name = $("#guest-name").value.trim();
-        const email = $("#guest-email").value.trim();
+        const phone = tenDigits(phoneInput.value);
         const attendance = $('input[name="attendance"]:checked', rsvpForm).value;
-        const diet = $("#diet-pref").value;
         const wishes = $("#wishes").value.trim();
-        if (!name || !email) return;
+        if (!name || phone.length !== 10) return;
 
         const now = new Date();
         const two = (n) => String(n).padStart(2, "0");
@@ -768,18 +703,17 @@
             " " + two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
 
         const entry = {
-            name, email, attendance,
+            name, phone, attendance,
             guests: attendance === "attending" ? guestCount : 0,
-            diet: attendance === "attending" ? diet : "none",
             wishes, timestamp
         };
 
         // always keep a copy on this device (drives the wish wall + local mode)
-        const list = getRSVPs();
+        const list = getRSVPs().filter(r => !isSameGuest(r, entry));
         list.push(entry);
         const saved = saveRSVPs(list);
 
-        // optional generic webhook copy (email notification services etc.)
+        // optional generic webhook copy (notification services etc.)
         if (config.rsvpWebhookUrl) {
             fetch(config.rsvpWebhookUrl, {
                 method: "POST",
@@ -793,7 +727,9 @@
             launchConfetti($(".rsvp-submit"));
 
             const msg = $("#rsvp-success-msg");
-            if (delivered === "failed") {
+            if (delivered === "list_full") {
+                msg.textContent = name + ", the guest list is not accepting any more entries, so your RSVP is saved on this device only. Please reach out to us directly so we can add you.";
+            } else if (delivered === "failed") {
                 msg.textContent = name + ", we couldn't reach the guest list right now, so your RSVP is saved on this device only. Please try again in a little while, or reach out to us directly.";
             } else if (!saved && delivered !== "delivered") {
                 msg.textContent = name + ", we couldn't save your RSVP on this device (your browser may be blocking storage). Please try again or reach out to us directly.";
@@ -807,7 +743,7 @@
             rsvpForm.reset();
             guestCount = 1;
             refreshStepper();
-            detailsBlock.classList.remove("collapsed");
+            collapseDetails(false);
         };
 
         if (!backendUrl()) {
@@ -827,10 +763,11 @@
         submitBtn.disabled = true;
         submitLabel.textContent = "Sending…";
 
-        backendPost({ action: "rsvp", name: entry.name, email: entry.email, attendance: entry.attendance, guests: entry.guests, diet: entry.diet, wishes: entry.wishes, timestamp: entry.timestamp })
+        backendPost({ action: "rsvp", name: entry.name, phone: entry.phone, attendance: entry.attendance, guests: entry.guests, wishes: entry.wishes, timestamp: entry.timestamp })
             .then(data => {
                 restore();
-                finishSubmit(data && data.ok ? "delivered" : "failed");
+                if (data && data.ok) return finishSubmit("delivered");
+                finishSubmit(data && data.error === "list_full" ? "list_full" : "failed");
             })
             .catch(() => {
                 restore();
@@ -844,7 +781,10 @@
     function renderWishes() {
         const wall = $("#wish-wall");
         if (!wall) return;
-        const entries = getRSVPs().filter(r => r.wishes && r.wishes.trim()).reverse();
+        // real wishes from this device first; the samples stand in only
+        // while there are none (they are never part of the guest list)
+        const own = getRSVPs().filter(r => r.wishes && r.wishes.trim()).reverse();
+        const entries = own.length ? own : DEMO_WISHES;
         if (entries.length === 0) {
             wall.innerHTML = '<p class="wish-empty">Be the first to leave the couple a wish — send yours with your RSVP.</p>';
             return;
@@ -906,7 +846,7 @@
         const evt = config.events && config.events[type];
         if (!evt) return;
 
-        const title = (config.groomName || "") + " and " + (config.brideName || "") + " — " + evt.title;
+        const title = (config.brideName || "") + " and " + (config.groomName || "") + " — " + evt.title;
         // "2026-09-24T16:00:00" -> "20260924T160000" (floating venue-local
         // time; slice guards against a stray UTC offset in the config value)
         const startDate = evt.startISO.replace(/[-:]/g, "").slice(0, 15);
@@ -961,24 +901,27 @@
     let adminData = [];          // the rows currently shown (drives exports)
     let adminDataSource = "local"; // "server" or "local" — set by renderAdmin
 
-    const ADMIN_COLUMNS = ["Guest Name", "Email", "Attending", "Guests", "Dietary Preference", "Wishes", "Timestamp"];
+    const ADMIN_COLUMNS = ["Guest Name", "Phone Number", "Attending", "Guests", "Wishes", "Timestamp"];
 
     // one RSVP object → one flat export row (shared by Excel and CSV)
     function adminRow(r) {
         const attending = r.attendance === "attending";
         return [
-            r.name, r.email,
+            r.name, r.phone || "",
             attending ? "Yes" : "No",
             attending ? (parseInt(r.guests, 10) || 0) : 0,
-            attending ? (r.diet || "none") : "N/A",
             r.wishes || "", r.timestamp || ""
         ];
     }
 
     $("#admin-trigger").addEventListener("click", () => {
         if (adminUnlocked) {
+            // reopening must show current data, not whatever was on screen at
+            // unlock time — in local mode that means re-reading this device's
+            // list, which is the only place new RSVPs have landed
+            if (backendUrl()) refreshAdminData();
+            else renderAdmin(getRSVPs(), "local");
             showAdminDashboard();
-            if (backendUrl()) refreshAdminData(); // re-sync on reopen
         } else {
             showAdminLock();
         }
@@ -1022,7 +965,7 @@
 
         if (!backendUrl()) {
             // local demo mode: client-side check (see note in config.js)
-            if (code === (config.adminPasscode || "2026")) {
+            if (code === (config.adminPasscode || "annwedsmaschio2026")) {
                 adminUnlocked = true;
                 renderAdmin(getRSVPs(), "local");
                 showAdminDashboard();
@@ -1100,17 +1043,16 @@
 
         const tbody = $("#rsvp-table-body");
         if (adminData.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No RSVPs yet.</td></tr>';
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No RSVPs yet.</td></tr>';
             return;
         }
         tbody.innerHTML = adminData.map(entry => {
             const attendingRow = entry.attendance === "attending";
             return "<tr>" +
                 "<td><strong>" + escapeHtml(entry.name) + "</strong></td>" +
-                "<td>" + escapeHtml(entry.email) + "</td>" +
+                "<td>" + escapeHtml(entry.phone) + "</td>" +
                 '<td><span class="pill ' + (attendingRow ? "yes" : "no") + '">' + (attendingRow ? "Yes" : "No") + "</span></td>" +
                 "<td>" + (attendingRow ? (parseInt(entry.guests, 10) || 0) : "0") + "</td>" +
-                '<td style="text-transform:capitalize">' + (attendingRow ? escapeHtml(entry.diet) : "—") + "</td>" +
                 '<td class="wish-cell">' + (escapeHtml(entry.wishes) || "—") + "</td>" +
                 "<td>" + escapeHtml(entry.timestamp || "") + "</td>" +
                 "</tr>";
@@ -1302,7 +1244,7 @@
             "Guest List",
             ADMIN_COLUMNS,
             adminData.map(adminRow),
-            [24, 30, 11, 9, 20, 48, 20]
+            [24, 22, 11, 9, 48, 20]
         );
         downloadBlob(blob, "wedding_guest_list.xlsx");
     });
@@ -1373,8 +1315,8 @@
 
         if (adminDataSource !== "server") {
             // local demo mode: same client-side check as the lock screen
-            if (code === (config.adminPasscode || "2026")) {
-                saveRSVPs(DEFAULT_WISHES);
+            if (code === (config.adminPasscode || "annwedsmaschio2026")) {
+                saveRSVPs([]);
                 hideClearConfirm();
                 renderAdmin(getRSVPs(), "local");
                 renderWishes();
@@ -1463,12 +1405,12 @@
     // ============================================================
     // GLOBAL KEYBOARD
     // ============================================================
-    // keep Tab inside whichever overlay (modal / lightbox) is open
+    // keep Tab inside whichever modal is open
     function trapFocus(container, e) {
         const focusables = $$(
             'button, a[href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])',
             container
-        ).filter(el => el.offsetParent !== null || container === lightbox);
+        ).filter(el => el.offsetParent !== null);
         if (!focusables.length) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
@@ -1486,16 +1428,11 @@
 
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
-            if (lightbox.classList.contains("open")) closeLightbox();
             $$(".modal.open").forEach(m => closeModal(m));
             closeMenu();
         }
-        if (lightbox.classList.contains("open")) {
-            if (e.key === "ArrowLeft") stepLightbox(-1);
-            if (e.key === "ArrowRight") stepLightbox(1);
-        }
         if (e.key === "Tab") {
-            const openOverlay = $(".modal.open") || (lightbox.classList.contains("open") ? lightbox : null);
+            const openOverlay = $(".modal.open");
             if (openOverlay) trapFocus(openOverlay, e);
         }
     });
@@ -1528,7 +1465,7 @@
             ring.style.top = ringPos.y + "px";
         });
 
-        const hoverSelector = "a, button, input, select, textarea, .segment, .gallery-img-wrap";
+        const hoverSelector = "a, button, input, select, textarea, .segment";
         document.addEventListener("mouseover", (e) => {
             if (e.target.closest(hoverSelector)) document.body.classList.add("cursor-hover");
         });
@@ -1556,11 +1493,11 @@
     }
 
     // ============================================================
-    // SCROLL-VELOCITY SKEW — headings & photos flex with scroll speed
+    // SCROLL-VELOCITY SKEW — headings flex with scroll speed
     // ============================================================
     function initScrollSkew() {
         if (!hasGSAP || !hasLenis || reducedMotion || !lenis) return;
-        const setters = $$(".section-title, .gallery-img-wrap").map(el => {
+        const setters = $$(".section-title").map(el => {
             el.style.willChange = "transform";
             return gsap.quickSetter(el, "skewY", "deg");
         });
@@ -1572,35 +1509,6 @@
             current += (target - current) * 0.1;
             if (Math.abs(current) < 0.001) current = 0;
             setters.forEach(set => set(current));
-        });
-    }
-
-    // ============================================================
-    // IMAGE DEPTH — pointer-driven 3D tilt + in-frame parallax
-    // ============================================================
-    function initImageDepth() {
-        if (!finePointer || reducedMotion || !hasGSAP) return;
-        $$(".gallery-item").forEach(item => {
-            const wrap = $(".gallery-img-wrap", item);
-            const img = wrap && $("img", wrap);
-            if (!wrap || !img) return;
-            // img rests at scale(1.08) (CSS) — enough overflow for in-frame parallax
-            const rotX = gsap.quickTo(wrap, "rotationX", { duration: 0.5, ease: "power3.out" });
-            const rotY = gsap.quickTo(wrap, "rotationY", { duration: 0.5, ease: "power3.out" });
-            const imgX = gsap.quickTo(img, "xPercent", { duration: 0.6, ease: "power3.out" });
-            const imgY = gsap.quickTo(img, "yPercent", { duration: 0.6, ease: "power3.out" });
-            item.addEventListener("mousemove", (e) => {
-                const r = wrap.getBoundingClientRect();
-                const px = (e.clientX - r.left) / r.width - 0.5;
-                const py = (e.clientY - r.top) / r.height - 0.5;
-                rotY(px * 10);
-                rotX(-py * 10);
-                imgX(-px * 6);
-                imgY(-py * 6);
-            });
-            item.addEventListener("mouseleave", () => {
-                rotX(0); rotY(0); imgX(0); imgY(0);
-            });
         });
     }
 
@@ -1704,11 +1612,9 @@
     renderWishes();
     initCountdown();
     initReveals();
-    initGallery();
     initCursor();
     initMagnetic();
     initScrollSkew();
-    initImageDepth();
     runPreloader();
 
     // disarms the preloader failsafe in index.html — only once the whole
