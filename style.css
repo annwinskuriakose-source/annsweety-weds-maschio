@@ -2040,6 +2040,25 @@ body.menu-open .menu-toggle .menu-bar:last-child {
         padding: 1.1em 0.5em;
     }
 
+    /* At 0.74rem with 0.22em tracking these two pills ran to within a few
+       pixels of the card edge and read louder than the venue name above them.
+       Smaller type and tighter tracking put them back to secondary actions;
+       the 44px min-height keeps the tap target. */
+    .event-actions {
+        gap: 0.9rem;
+    }
+
+    .event-actions .text-btn {
+        font-size: 0.64rem;
+        letter-spacing: 0.15em;
+        gap: 0.4rem;
+    }
+
+    .event-actions .text-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+
     .countdown-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
