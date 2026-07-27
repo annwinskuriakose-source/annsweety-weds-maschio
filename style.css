@@ -231,6 +231,15 @@ body.cursor-hover #cursor-ring {
         border-color: rgba(156, 59, 46, 0.4);
     }
 
+    /* The itinerary pair sits inside an already-bordered event row, so the
+       pill outline doubled up on chrome. They keep the 44px tap height but
+       read as plain text; the heavier weight carries the affordance. */
+    .event-actions .text-btn {
+        padding: 0.7em 0;
+        border: 0;
+        border-radius: 0;
+    }
+
     .text-btn:active {
         border-color: var(--bronze);
         color: var(--bronze);
@@ -1081,6 +1090,10 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     display: flex;
     flex-wrap: wrap;
     gap: 1.8rem;
+}
+
+.event-actions .text-btn {
+    font-weight: 700;
 }
 
 .event-num {
