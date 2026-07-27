@@ -1595,8 +1595,18 @@
     // ============================================================
     const musicToggle = $("#music-toggle");
     const Music = (() => {
+        const STORE_KEY = "annsweety-music";
+        // the event types that actually grant user activation, so a blocked
+        // autoplay can be picked up by the visitor's very first interaction
+        const GESTURES = ["pointerdown", "touchend", "keydown", "click"];
+        const FADE_IN = 2.4;
+        const FADE_OUT = 0.6;
+
         let ctx = null;
-        let playing = false;
+        let master = null;
+        let playing = false;   // notes are actually being scheduled
+        let wanted = false;    // the music is meant to be on
+        let armed = false;     // waiting on a first gesture to unblock audio
         let intervalId = null;
         let chordIndex = 0;
         let step = 0;
@@ -1631,10 +1641,10 @@
             osc.connect(filter);
             octave.connect(filter);
             filter.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(master);
             gain.connect(delay);
             delay.connect(delayGain);
-            delayGain.connect(ctx.destination);
+            delayGain.connect(master);
 
             osc.start(time);
             octave.start(time);
@@ -1660,27 +1670,125 @@
             if (step === 0) chordIndex = (chordIndex + 1) % chords.length;
         }
 
+        // a pause is remembered for the tab only, so every fresh visit still
+        // opens with music while a deliberate "off" survives in-session reloads
+        function remember(v) { try { sessionStorage.setItem(STORE_KEY, v); } catch (e) { /* private mode */ } }
+        function recall() { try { return sessionStorage.getItem(STORE_KEY); } catch (e) { return null; } }
+
+        // the button reflects audible sound, never mere intent — while autoplay
+        // is still blocked the site is silent, and the bars must not claim otherwise
+        function setUI() {
+            if (!musicToggle) return;
+            musicToggle.classList.toggle("playing", playing);
+            musicToggle.setAttribute("aria-pressed", String(playing));
+            musicToggle.setAttribute("aria-label", playing ? "Pause ambient music" : "Play ambient music");
+        }
+
+        function ensureContext() {
+            if (ctx) return true;
+            try {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) { return false; }
+            master = ctx.createGain();
+            master.gain.value = 0;
+            master.connect(ctx.destination);
+            // the single reliable signal that audio was unblocked — covers the
+            // resume() promise that some browsers leave pending indefinitely
+            ctx.onstatechange = () => {
+                if (ctx.state === "running") {
+                    if (wanted && !playing) beginLoop();
+                } else if (playing) {
+                    // suspended out from under us (iOS call, tab interruption):
+                    // stop scheduling, since ctx.currentTime freezes and every
+                    // queued note would land in one burst on resume
+                    stopLoop();
+                    arm();
+                }
+            };
+            return true;
+        }
+
+        function beginLoop() {
+            if (playing || !ctx || ctx.state !== "running") return;
+            playing = true;
+            step = 0;
+            const t = ctx.currentTime;
+            master.gain.cancelScheduledValues(t);
+            master.gain.setValueAtTime(master.gain.value, t);
+            master.gain.linearRampToValueAtTime(1, t + FADE_IN);
+            playStep();
+            intervalId = setInterval(playStep, 400);
+            disarm();
+            setUI();
+        }
+
+        function stopLoop() {
+            if (!playing) return;
+            playing = false;
+            clearInterval(intervalId);
+            intervalId = null;
+            if (master && ctx) {
+                const t = ctx.currentTime;
+                master.gain.cancelScheduledValues(t);
+                master.gain.setValueAtTime(master.gain.value, t);
+                master.gain.linearRampToValueAtTime(0, t + FADE_OUT);
+            }
+            setUI();
+        }
+
+        function onGesture(e) {
+            // the toggle runs its own handler; starting here too would make its
+            // click both start and immediately stop the music
+            if (e.target && e.target.closest && e.target.closest("#music-toggle")) return;
+            start();
+        }
+
+        function arm() {
+            if (armed) return;
+            armed = true;
+            GESTURES.forEach(type => document.addEventListener(type, onGesture, { passive: true }));
+        }
+
+        function disarm() {
+            if (!armed) return;
+            armed = false;
+            GESTURES.forEach(type => document.removeEventListener(type, onGesture));
+        }
+
+        function start() {
+            wanted = true;
+            if (playing || !ensureContext()) return;
+            if (ctx.state === "running") { beginLoop(); return; }
+            const resuming = ctx.resume();
+            if (resuming && typeof resuming.then === "function") resuming.catch(() => { /* still blocked */ });
+            setTimeout(() => {
+                if (!wanted || playing) return;
+                if (ctx.state === "running") beginLoop();
+                else arm();
+            }, 150);
+        }
+
         return {
             toggle() {
-                if (!ctx) {
-                    try {
-                        ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    } catch (e) { return; }
-                }
-                if (ctx.state === "suspended") ctx.resume();
-                playing = !playing;
-                musicToggle.classList.toggle("playing", playing);
-                musicToggle.setAttribute("aria-pressed", String(playing));
-                musicToggle.setAttribute("aria-label", playing ? "Pause ambient music" : "Play ambient music");
                 if (playing) {
-                    intervalId = setInterval(playStep, 400);
+                    wanted = false;
+                    remember("off");
+                    disarm();
+                    stopLoop();
                 } else {
-                    clearInterval(intervalId);
+                    // a click is itself a gesture, so this start always takes
+                    remember("on");
+                    start();
                 }
+            },
+            autoplay() {
+                if (recall() === "off") { setUI(); return; }
+                arm();
+                start();
             }
         };
     })();
-    musicToggle.addEventListener("click", () => Music.toggle());
+    if (musicToggle) musicToggle.addEventListener("click", () => Music.toggle());
 
     // ============================================================
     // BOOT
@@ -1694,6 +1802,7 @@
     initMagnetic();
     initScrollSkew();
     runPreloader();
+    Music.autoplay();
 
     // disarms the preloader failsafe in index.html — only once the whole
     // boot sequence (including preloader dismissal) has been scheduled
