@@ -20,7 +20,10 @@
     --font-serif: "Fraunces", "Georgia", serif;
     --font-sans: "Manrope", "Helvetica Neue", Arial, sans-serif;
 
-    --pad-x: clamp(1.25rem, 5vw, 5.5rem);
+    /* max() with the safe-area insets keeps every section clear of the notch in
+       landscape, now that viewport-fit=cover lets content run edge to edge.
+       Both insets are 0 in portrait and on non-notched devices. */
+    --pad-x: max(clamp(1.25rem, 5vw, 5.5rem), env(safe-area-inset-left), env(safe-area-inset-right));
     --pad-y: clamp(5rem, 14vh, 10rem);
     --ease-out: cubic-bezier(0.19, 1, 0.22, 1);
 }
@@ -36,6 +39,9 @@
 
 html {
     scroll-behavior: smooth;
+    /* the scroll lock pins <body>, which would otherwise remove the scrollbar
+       and shift the page sideways every time an overlay opens */
+    scrollbar-gutter: stable;
 }
 
 html.lenis,
@@ -62,7 +68,14 @@ body {
     overflow-x: clip;
 }
 
+/* Pinned rather than just overflow:hidden — on iOS Safari a hidden overflow
+   still lets the page rubber-band behind the overlay and commonly loses the
+   scroll position. script.js sets the matching negative `top` and restores it. */
 body.no-scroll {
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
     overflow: hidden;
 }
 
@@ -196,6 +209,62 @@ body.cursor-hover #cursor-ring {
     #cursor-ring {
         display: none;
     }
+
+    /* ---------- Touch targets ----------
+       Controls sized by em-padding on ~11px type land at 21-35px tall, well
+       under the 44px a fingertip needs. The hover underline/colour shifts they
+       rely on to look interactive also never fire on touch, so the text-style
+       buttons get resting chrome here too. */
+    .text-btn {
+        min-height: 44px;
+        padding: 0.7em 1.1em;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+    }
+
+    .text-btn::after {
+        /* the sliding underline is a hover affordance; the border replaces it */
+        content: none;
+    }
+
+    .text-btn.danger {
+        border-color: rgba(156, 59, 46, 0.4);
+    }
+
+    .text-btn:active {
+        border-color: var(--bronze);
+        color: var(--bronze);
+    }
+
+    .admin-trigger {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 1.1em;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+    }
+
+    .nav-rsvp-btn {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    .segment-face {
+        min-height: 44px;
+    }
+
+    .modal-btn {
+        min-height: 44px;
+    }
+
+    .menu-link {
+        padding: 0.12em 0;
+        /* only bites in short landscape, where the type is scaled down to
+           clamp(1.4rem, 9vh, 2.4rem) and the row would otherwise be 41px */
+        min-height: 44px;
+    }
 }
 
 /* ============================================================
@@ -210,7 +279,7 @@ body.cursor-hover #cursor-ring {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: clamp(1rem, 2.5vw, 1.6rem) var(--pad-x);
+    padding: max(clamp(1rem, 2.5vw, 1.6rem), env(safe-area-inset-top)) var(--pad-x) clamp(1rem, 2.5vw, 1.6rem);
     mix-blend-mode: difference;
     color: #f5f0e6;
     transition: transform 0.6s var(--ease-out);
@@ -312,13 +381,21 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 .menu-overlay {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    /* above the fixed music toggle (95), below the nav (100) so the hamburger
+       stays reachable as the close control */
+    z-index: 96;
     background: var(--ink-2);
     color: var(--paper);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 0 var(--pad-x);
+    /* not justify-content: center — when the links overflow (large
+       accessibility text, short landscape) centring strands the first one
+       above the top edge with no way to scroll back to it. Auto margins on
+       the children centre the same way but yield to the scroll container. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: max(5rem, env(safe-area-inset-top)) var(--pad-x) max(2rem, env(safe-area-inset-bottom));
+    -webkit-clip-path: inset(0 0 100% 0);
     clip-path: inset(0 0 100% 0);
     visibility: hidden;
 }
@@ -327,6 +404,11 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     display: flex;
     flex-direction: column;
     gap: 0.2em;
+    /* auto margins centre the links exactly like justify-content: center did,
+       but collapse to zero once the content is taller than the overlay, so
+       nothing is ever stranded outside the scrollable area */
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
 .menu-link {
@@ -341,9 +423,18 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     transition: color 0.35s, transform 0.5s var(--ease-out);
 }
 
-.menu-link:hover {
+/* Hover states that move things are gated on a real hovering pointer: on iOS
+   :hover sticks after a tap, so an ungated transform stays applied until the
+   guest taps somewhere else. */
+@media (hover: hover) {
+    .menu-link:hover {
+        color: var(--bronze-soft);
+        transform: translateX(0.35em);
+    }
+}
+
+.menu-link:active {
     color: var(--bronze-soft);
-    transform: translateX(0.35em);
 }
 
 .menu-index {
@@ -356,7 +447,7 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 
 .menu-footer {
     position: absolute;
-    bottom: clamp(1.5rem, 4vh, 3rem);
+    bottom: max(clamp(1.5rem, 4vh, 3rem), env(safe-area-inset-bottom));
     left: var(--pad-x);
     font-size: 0.72rem;
     letter-spacing: 0.22em;
@@ -369,8 +460,10 @@ body.menu-open .menu-toggle .menu-bar:last-child {
    ============================================================ */
 .music-toggle {
     position: fixed;
-    right: clamp(1rem, 3vw, 2rem);
-    bottom: clamp(1rem, 3vw, 2rem);
+    /* with viewport-fit=cover the page runs under the notch and the home
+       indicator, so keep the toggle clear of both */
+    right: max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-right));
+    bottom: max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-bottom));
     z-index: 95;
     width: 52px;
     height: 52px;
@@ -386,9 +479,15 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     transition: border-color 0.3s, transform 0.3s var(--ease-out);
 }
 
-.music-toggle:hover {
+@media (hover: hover) {
+    .music-toggle:hover {
+        border-color: var(--bronze);
+        transform: scale(1.06);
+    }
+}
+
+.music-toggle:active {
     border-color: var(--bronze);
-    transform: scale(1.06);
 }
 
 .eq-bar {
@@ -434,6 +533,9 @@ body.menu-open .menu-toggle .menu-bar:last-child {
    ============================================================ */
 .hero {
     position: relative;
+    /* vh first: browsers without svh support drop the line below and would
+       otherwise fall back to auto, collapsing the hero to its content height */
+    min-height: 100vh;
     min-height: 100svh;
     display: flex;
     flex-direction: column;
@@ -1046,10 +1148,55 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     background: var(--paper);
 }
 
+.map-embed {
+    position: relative;
+    /* was a flat height="380" at every size — nearly half a phone screen */
+    height: clamp(220px, 42vw, 380px);
+}
+
 .map-frame iframe {
     display: block;
-    filter: grayscale(1) sepia(0.18) contrast(0.95);
     width: 100%;
+    height: 100%;
+    filter: grayscale(1) sepia(0.18) contrast(0.95);
+}
+
+/* Covers the embed until tapped, so vertical scrolling passes over the map
+   rather than being captured by it. Removed for good on first activation. */
+.map-shim {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 1.4rem;
+    background: linear-gradient(180deg, rgba(42, 26, 6, 0) 55%, rgba(42, 26, 6, 0.45) 100%);
+    color: var(--paper);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    transition: opacity 0.3s;
+}
+
+.map-shim span {
+    background: rgba(26, 17, 3, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    padding: 0.85em 1.4em;
+    border-radius: 999px;
+}
+
+.map-embed.map-active .map-shim {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* on a mouse, dragging the map is harmless and the shim is just friction */
+@media (hover: hover) and (pointer: fine) {
+    .map-shim {
+        display: none;
+    }
 }
 
 /* ============================================================
@@ -1308,13 +1455,19 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     transition: transform 0.4s var(--ease-out);
 }
 
-.rsvp-submit:hover {
-    background: var(--bronze-soft);
-    transform: translateY(-2px);
+@media (hover: hover) {
+    .rsvp-submit:hover {
+        background: var(--bronze-soft);
+        transform: translateY(-2px);
+    }
+
+    .rsvp-submit:hover svg {
+        transform: translateX(4px);
+    }
 }
 
-.rsvp-submit:hover svg {
-    transform: translateX(4px);
+.rsvp-submit:active {
+    background: var(--bronze-soft);
 }
 
 .rsvp-form-hint {
@@ -1400,7 +1553,7 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 .footer {
     position: relative;
     text-align: center;
-    padding: clamp(6rem, 18vh, 11rem) var(--pad-x) clamp(1.6rem, 4vh, 2.6rem);
+    padding: clamp(6rem, 18vh, 11rem) var(--pad-x) max(clamp(1.6rem, 4vh, 2.6rem), env(safe-area-inset-bottom));
     /* mostly transparent to reveal the fixed silk canvas; the gradient
        dissolves the hard edge against the guestbook section above */
     background: linear-gradient(180deg, var(--paper) 0%, rgba(248, 234, 208, 0) 26%);
@@ -1563,7 +1716,13 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     max-width: 1040px;
     text-align: left;
     max-height: 86vh;
+    /* dvh tracks the shrinking viewport as mobile browser chrome appears, so
+       the card can never grow taller than what is actually on screen */
+    max-height: 86dvh;
     overflow-y: auto;
+    /* the guest list is the scroller; don't chain the gesture to the page */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-close {
@@ -1580,9 +1739,15 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     transition: border-color 0.3s, transform 0.3s;
 }
 
-.admin-close:hover {
+@media (hover: hover) {
+    .admin-close:hover {
+        border-color: var(--bronze);
+        transform: rotate(90deg);
+    }
+}
+
+.admin-close:active {
     border-color: var(--bronze);
-    transform: rotate(90deg);
 }
 
 .admin-close svg {
@@ -1621,7 +1786,9 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     border-radius: 999px;
     padding: 0.9em 1.4em;
     font: inherit;
-    font-size: 0.95rem;
+    /* keep at 16px: iOS Safari zooms the page in on focus for anything
+       smaller, and does not zoom back out afterwards */
+    font-size: 1rem;
     letter-spacing: 0.14em;
     text-align: center;
     color: var(--ink);
@@ -1898,9 +2065,7 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     }
 
     .admin-actions {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: flex-start;
+        gap: 0.6rem;
     }
 
     .admin-clear-confirm .admin-lock-row {
@@ -1909,6 +2074,148 @@ body.menu-open .menu-toggle .menu-bar:last-child {
 
     .admin-clear-confirm .admin-passcode-input {
         flex-basis: 100%;
+    }
+
+    /* ---------- Guest list as a full-screen sheet ----------
+       A 1040px card centred in a 1.2rem-padded overlay leaves ~250px of usable
+       width on a phone. Full-bleed instead, sized in dvh so browser chrome can
+       never push part of it off screen, with the heading and close button
+       pinned and one scrolling body beneath them. */
+    .admin-modal {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .admin-card {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        border: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        /* the body below scrolls; the card itself must not */
+        overflow: hidden;
+    }
+
+    .admin-card h2 {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: max(1.4rem, env(safe-area-inset-top)) 4rem 1.1rem 1.25rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .admin-close {
+        top: max(1rem, env(safe-area-inset-top));
+        right: 1rem;
+    }
+
+    .admin-lock,
+    #admin-dashboard {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding: 1.25rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+    }
+
+    .admin-lock {
+        padding-top: 2rem;
+    }
+
+    /* ---------- Table → stacked cards ----------
+       The 760px table needed sideways swiping to read a single guest. Each
+       RSVP becomes a labelled block instead, which also removes the nested
+       horizontal scroller. */
+    .table-scroll {
+        overflow-x: visible;
+        border: 0;
+    }
+
+    .admin-table {
+        display: block;
+        min-width: 0;
+        font-size: 0.9rem;
+    }
+
+    .admin-table thead {
+        /* headings live on each cell via data-label now, but keep them for
+           screen readers rather than removing them from the accessibility tree */
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .admin-table tbody {
+        display: block;
+    }
+
+    .admin-table tr {
+        display: block;
+        border: 1px solid var(--line);
+        margin-bottom: 0.9rem;
+    }
+
+    .admin-table td {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1.2rem;
+        padding: 0.5rem 0.85rem;
+        border-bottom: 1px solid var(--line);
+        text-align: right;
+    }
+
+    .admin-table tr td:last-child {
+        border-bottom: 0;
+    }
+
+    .admin-table td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        text-align: left;
+    }
+
+    /* the name reads as the card's heading */
+    .admin-table td[data-label="Guest"] {
+        background: var(--paper-2);
+        padding-top: 0.65rem;
+        padding-bottom: 0.65rem;
+    }
+
+    /* wishes run long — give them the full width under their label */
+    .admin-table td.wish-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        max-width: none;
+        min-width: 0;
+        text-align: left;
+    }
+
+    .admin-table .empty-row {
+        border: 1px solid var(--line);
+    }
+
+    .admin-table .empty-row td {
+        display: block;
+        text-align: center;
+        border-bottom: 0;
+    }
+
+    .admin-table .empty-row td::before {
+        content: none;
     }
 }
 

@@ -308,7 +308,21 @@
             if (reducedMotion) renderer.render(scene, camera);
         }
         resize();
-        window.addEventListener("resize", resize);
+        // Debounced: on mobile the browser fires resize for every chrome
+        // collapse and every soft-keyboard open, and reallocating the drawing
+        // buffer each time is visibly janky. A keyboard opening changes only
+        // the height, so skip those while a field is focused — the blur that
+        // closes the keyboard fires resize again and re-syncs.
+        let resizeTimer = null;
+        let lastWidth = window.innerWidth;
+        window.addEventListener("resize", () => {
+            const typing = document.activeElement &&
+                /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+            if (window.innerWidth === lastWidth && typing) return;
+            lastWidth = window.innerWidth;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(resize, 180);
+        });
 
         const mouseTarget = { x: 0.5, y: 0.5 };
         if (finePointer && !reducedMotion) {
@@ -378,9 +392,31 @@
         gsap.ticker.lagSmoothing(0);
     }
 
+    // Locking the page behind an overlay. `overflow: hidden` on <body> alone is
+    // not a reliable lock on iOS Safari — the page still rubber-bands and often
+    // loses its position — so the body is pinned with position: fixed at a
+    // negative offset and restored to the same place on unlock. Nested lock
+    // requests are counted, since the preloader can still be locked when a
+    // modal opens.
+    let scrollLockDepth = 0;
+    let lockedScrollY = 0;
     function scrollLock(lock) {
-        document.body.classList.toggle("no-scroll", lock);
-        if (lenis) lock ? lenis.stop() : lenis.start();
+        const body = document.body;
+        if (lock) {
+            if (scrollLockDepth++ > 0) return;
+            lockedScrollY = window.scrollY || window.pageYOffset || 0;
+            body.style.top = "-" + lockedScrollY + "px";
+            body.classList.add("no-scroll");
+            if (lenis) lenis.stop();
+        } else {
+            if (scrollLockDepth === 0 || --scrollLockDepth > 0) return;
+            body.classList.remove("no-scroll");
+            body.style.top = "";
+            // instant, not the page's smooth behaviour: this is restoring where
+            // the guest already was, not a navigation
+            window.scrollTo({ top: lockedScrollY, behavior: "auto" });
+            if (lenis) lenis.start();
+        }
     }
 
     // anchor links glide via Lenis
@@ -832,8 +868,25 @@
     });
 
     // ============================================================
+    // MAP — hand the embed its gestures only once asked
+    // ============================================================
+    (function initMapShim() {
+        const shim = $("#map-shim");
+        if (!shim) return;
+        shim.addEventListener("click", () => {
+            shim.closest(".map-embed").classList.add("map-active");
+        });
+    })();
+
+    // ============================================================
     // ADD TO CALENDAR (.ics download)
     // ============================================================
+    // iPadOS reports itself as a Mac, so the touch check catches it too
+    function isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+
     function escapeICSText(text) {
         return String(text || "")
             .replace(/\\/g, "\\\\")
@@ -868,6 +921,23 @@
             "END:VCALENDAR"
         ].join("\r\n");
 
+        // iOS Safari ignores the download attribute on a blob URL: the .ics is
+        // saved to Files instead of reaching Calendar, so the button looks
+        // broken. Send those guests to a Google Calendar template instead,
+        // which opens the event ready to save on any device.
+        if (isIOS()) {
+            const gcal = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+                "&text=" + encodeURIComponent(title) +
+                "&dates=" + startDate + "/" + endDate +
+                // the venue's zone — the event times in config.js are local
+                // wall-clock times at the Cathedral, with no offset of their own
+                "&ctz=Asia/Kolkata" +
+                "&details=" + encodeURIComponent("Please join us to celebrate our wedding!") +
+                "&location=" + encodeURIComponent(evt.address || "");
+            window.open(gcal, "_blank", "noopener");
+            return;
+        }
+
         const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -875,6 +945,8 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
+        // the blob is retained until revoked; give the click a moment to start
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
     };
 
     // ============================================================
@@ -1046,15 +1118,19 @@
             tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No RSVPs yet.</td></tr>';
             return;
         }
+        // data-label mirrors the <thead> headings. On phones the table is
+        // restyled into stacked cards and the header row is hidden, so CSS
+        // reads these back out via content: attr(data-label) to keep every
+        // value labelled. They are fixed strings, never guest input.
         tbody.innerHTML = adminData.map(entry => {
             const attendingRow = entry.attendance === "attending";
             return "<tr>" +
-                "<td><strong>" + escapeHtml(entry.name) + "</strong></td>" +
-                "<td>" + escapeHtml(entry.phone) + "</td>" +
-                '<td><span class="pill ' + (attendingRow ? "yes" : "no") + '">' + (attendingRow ? "Yes" : "No") + "</span></td>" +
-                "<td>" + (attendingRow ? (parseInt(entry.guests, 10) || 0) : "0") + "</td>" +
-                '<td class="wish-cell">' + (escapeHtml(entry.wishes) || "—") + "</td>" +
-                "<td>" + escapeHtml(entry.timestamp || "") + "</td>" +
+                '<td data-label="Guest"><strong>' + escapeHtml(entry.name) + "</strong></td>" +
+                '<td data-label="Phone">' + escapeHtml(entry.phone) + "</td>" +
+                '<td data-label="Attending"><span class="pill ' + (attendingRow ? "yes" : "no") + '">' + (attendingRow ? "Yes" : "No") + "</span></td>" +
+                '<td data-label="Guests">' + (attendingRow ? (parseInt(entry.guests, 10) || 0) : "0") + "</td>" +
+                '<td class="wish-cell" data-label="Wishes">' + (escapeHtml(entry.wishes) || "—") + "</td>" +
+                '<td data-label="When">' + escapeHtml(entry.timestamp || "") + "</td>" +
                 "</tr>";
         }).join("");
     }
@@ -1432,7 +1508,9 @@
             closeMenu();
         }
         if (e.key === "Tab") {
-            const openOverlay = $(".modal.open");
+            // the fullscreen menu covers the page just as a modal does, so Tab
+            // has to stay inside it too
+            const openOverlay = $(".modal.open") || (menuOpen ? menuOverlay : null);
             if (openOverlay) trapFocus(openOverlay, e);
         }
     });
