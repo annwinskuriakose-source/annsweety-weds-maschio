@@ -1053,11 +1053,14 @@
     const adminSource = $("#admin-source");
     const adminRefreshBtn = $("#admin-refresh-btn");
     const clearBtn = $("#clear-rsvps-btn");
+    const rsvpTableBody = $("#rsvp-table-body");
 
     let adminUnlocked = false;   // survives modal close, resets on page reload
     let adminKey = "";           // passcode kept in memory only, for refreshes
     let adminData = [];          // the rows currently shown (drives exports)
     let adminDataSource = "local"; // "server" or "local" — set by renderAdmin
+    let pendingDelete = null;    // the entry whose row is asking "delete?"
+    let deleteBusy = false;      // a single-entry delete is in flight
 
     const ADMIN_COLUMNS = ["Guest Name", "Phone Number", "Attending", "Guests", "Wishes", "Timestamp"];
 
@@ -1093,12 +1096,14 @@
         adminLockError.hidden = true;
         adminPasscodeInput.value = "";
         hideClearConfirm();
+        resetRowDelete();
     }
 
     function showAdminDashboard() {
         adminLockForm.hidden = true;
         adminDashboard.hidden = false;
         hideClearConfirm();
+        resetRowDelete();
     }
 
     function setLockBusy(busy) {
@@ -1194,16 +1199,15 @@
             { num: adminData.length - attending.length, label: "Declined" }
         ].map(s => '<div class="stat-tile"><p class="stat-num">' + s.num + '</p><p class="stat-label">' + s.label + '</p></div>').join("");
 
-        const tbody = $("#rsvp-table-body");
         if (adminData.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No RSVPs yet.</td></tr>';
+            rsvpTableBody.innerHTML = '<tr class="empty-row"><td colspan="7">No RSVPs yet.</td></tr>';
             return;
         }
         // data-label mirrors the <thead> headings. On phones the table is
         // restyled into stacked cards and the header row is hidden, so CSS
         // reads these back out via content: attr(data-label) to keep every
         // value labelled. They are fixed strings, never guest input.
-        tbody.innerHTML = adminData.map(entry => {
+        rsvpTableBody.innerHTML = adminData.map((entry, index) => {
             const attendingRow = entry.attendance === "attending";
             return "<tr>" +
                 '<td data-label="Guest"><strong>' + escapeHtml(entry.name) + "</strong></td>" +
@@ -1212,6 +1216,7 @@
                 '<td data-label="Guests">' + (attendingRow ? (parseInt(entry.guests, 10) || 0) : "0") + "</td>" +
                 '<td class="wish-cell" data-label="Wishes">' + (escapeHtml(entry.wishes) || "—") + "</td>" +
                 '<td data-label="When">' + escapeHtml(entry.timestamp || "") + "</td>" +
+                rowActionsCell(entry, index) +
                 "</tr>";
         }).join("");
     }
@@ -1496,6 +1501,135 @@
                 clearFail("Couldn't reach the guest-list service. Check your connection and try again.");
             });
     });
+
+    // ---- Remove a single guest (passcode-protected) ----
+    // The bin icon only turns that one row into "Delete / Cancel"; nothing
+    // leaves the Sheet until Delete is pressed. The passcode already held in
+    // memory travels with the request and is checked on Google's servers, so
+    // this is exactly as privileged as unlocking — the button is a shortcut
+    // to a row, never a way around the lock.
+    const rowErrorEl = $("#admin-row-error");
+
+    function resetRowDelete() {
+        pendingDelete = null;
+        deleteBusy = false;
+        rowErrorEl.hidden = true;
+    }
+
+    function rowFail(message) {
+        rowErrorEl.textContent = message;
+        rowErrorEl.hidden = false;
+    }
+
+    // The last cell of a row: the bin icon, or that row's confirmation.
+    // Rows are keyed by their position in adminData, which is rebuilt from
+    // scratch on every render, so an index can never outlive its entry.
+    function rowActionsCell(entry, index) {
+        if (adminDataSource !== "server") {
+            // Local-only data has no Sheet row to delete. No data-label
+            // either: on phones that would print a heading over an empty cell.
+            return '<td class="row-actions"></td>';
+        }
+        const busy = deleteBusy ? " disabled" : "";
+        if (entry === pendingDelete) {
+            return '<td class="row-actions confirming" data-label="Remove"><span class="row-btn-group">' +
+                '<button type="button" class="row-btn danger" data-act="confirm" data-idx="' + index + '"' + busy + ">" +
+                (deleteBusy ? "Deleting…" : "Delete") + "</button>" +
+                '<button type="button" class="row-btn" data-act="cancel" data-idx="' + index + '"' + busy + ">Cancel</button>" +
+                "</span></td>";
+        }
+        return '<td class="row-actions" data-label="Remove">' +
+            '<button type="button" class="row-btn icon" data-act="ask" data-idx="' + index + '"' + busy +
+            ' aria-label="Remove the RSVP from ' + escapeHtml(entry.name) + '" title="Remove this RSVP">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2m-8 0l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            "</button></td>";
+    }
+
+    // Re-rendering replaces the buttons, so the keyboard focus that was on
+    // one lands nowhere. Put it back on the button that took its place.
+    function focusRowButton(entry, act) {
+        const index = adminData.indexOf(entry);
+        if (index < 0) return;
+        const btn = rsvpTableBody.querySelector('button[data-act="' + act + '"][data-idx="' + index + '"]');
+        if (btn) btn.focus();
+    }
+
+    rsvpTableBody.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-act]");
+        if (!btn || deleteBusy) return;
+        const entry = adminData[parseInt(btn.dataset.idx, 10)];
+        if (!entry) return;
+
+        if (btn.dataset.act === "ask") {
+            pendingDelete = entry;
+            rowErrorEl.hidden = true;
+            renderAdmin(adminData, adminDataSource);
+            focusRowButton(entry, "confirm");
+        } else if (btn.dataset.act === "cancel") {
+            pendingDelete = null;
+            renderAdmin(adminData, adminDataSource);
+            focusRowButton(entry, "ask");
+        } else if (btn.dataset.act === "confirm") {
+            deleteEntry(entry);
+        }
+    });
+
+    function deleteEntry(entry) {
+        if (adminDataSource !== "server" || !backendUrl() || !adminKey) return;
+        deleteBusy = true;
+        rowErrorEl.hidden = true;
+        renderAdmin(adminData, adminDataSource);
+
+        // Name + phone, not a row number: the server finds the row itself, so
+        // a list that went stale while the dashboard was open cannot make this
+        // delete somebody else's entry.
+        backendPost({ action: "delete", passcode: adminKey, name: entry.name, phone: entry.phone })
+            .then(data => {
+                deleteBusy = false;
+                const error = data && data.ok ? "" : String((data && data.error) || "error");
+
+                if (error === "unauthorized") {
+                    // The passcode changed on the server mid-session.
+                    resetRowDelete();
+                    adminUnlocked = false;
+                    adminKey = "";
+                    showAdminLock();
+                    lockFail("The passcode has changed. Please enter the new one.");
+                    return;
+                }
+
+                if (!error) {
+                    pendingDelete = null;
+                    // Drop it here too so the row goes at once, then re-read:
+                    // the Sheet is the record, and someone may have RSVP'd
+                    // since this list was loaded.
+                    const index = adminData.indexOf(entry);
+                    if (index > -1) adminData.splice(index, 1);
+                } else if (error === "not_found") {
+                    pendingDelete = null;
+                    const index = adminData.indexOf(entry);
+                    if (index > -1) adminData.splice(index, 1);
+                    rowFail(entry.name + " was already removed from the guest list.");
+                } else if (error === "unknown_action") {
+                    rowFail("The backend can't remove single entries yet — redeploy the latest Code.gs (see BACKEND_SETUP.md).");
+                } else if (error === "missing_fields") {
+                    rowFail("This entry is missing the name or phone number needed to find its row. Delete it in the Google Sheet instead.");
+                } else {
+                    rowFail("The guest-list service returned an error. Please try again.");
+                }
+
+                renderAdmin(adminData, adminDataSource);
+                if (!error || error === "not_found") refreshAdminData();
+            })
+            .catch(() => {
+                deleteBusy = false;
+                // The request may still have gone through, so re-read rather
+                // than leaving a row on screen that no longer exists.
+                rowFail("Couldn't reach the guest-list service. Check your connection and try again.");
+                renderAdmin(adminData, adminDataSource);
+                refreshAdminData();
+            });
+    }
 
     // ============================================================
     // NAV + FULLSCREEN MENU

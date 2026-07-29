@@ -1981,11 +1981,18 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     border: 1px solid var(--line);
 }
 
+.admin-row-error {
+    /* sits above the table, not under a field like the other errors */
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.84rem;
-    min-width: 760px;
+    /* 760px + room for the Remove column */
+    min-width: 830px;
 }
 
 .admin-table th {
@@ -2039,6 +2046,74 @@ body.menu-open .menu-toggle .menu-bar:last-child {
     font-style: italic;
     color: var(--ink-soft);
     padding: 2rem 1rem;
+}
+
+/* the Remove column narrows the others — keep a 10-digit number on one line
+   rather than letting overflow-wrap break it mid-number */
+.admin-table td[data-label="Phone"] {
+    white-space: nowrap;
+}
+
+/* per-row remove control (bin icon → Delete / Cancel in place) */
+.admin-table td.row-actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.row-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.row-btn {
+    font-family: var(--font-sans);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.45em 0.9em;
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    background: transparent;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.row-btn:hover {
+    background: var(--paper-2);
+}
+
+.row-btn.danger {
+    border-color: #9c3b2e;
+    color: #fff;
+    background: #9c3b2e;
+}
+
+.row-btn.danger:hover {
+    background: #7d2f24;
+}
+
+.row-btn.icon {
+    display: inline-flex;
+    padding: 0.4em;
+    border-color: transparent;
+    color: var(--ink-soft);
+}
+
+.row-btn.icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.row-btn.icon:hover {
+    border-color: rgba(156, 59, 46, 0.4);
+    background: rgba(156, 59, 46, 0.08);
+    color: #9c3b2e;
+}
+
+.row-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
 }
 
 /* ============================================================
@@ -2268,6 +2343,12 @@ body.menu-open .menu-toggle .menu-bar:last-child {
         background: var(--paper-2);
         padding-top: 0.65rem;
         padding-bottom: 0.65rem;
+    }
+
+    /* the bin icon and its confirmation centre on their label, rather than
+       hanging off the shared baseline */
+    .admin-table td.row-actions {
+        align-items: center;
     }
 
     /* wishes run long — give them the full width under their label */
