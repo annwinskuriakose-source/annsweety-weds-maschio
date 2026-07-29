@@ -11,12 +11,20 @@ Total setup time: about 10 minutes. Everything used here is free.
 
 ## What you get
 
-| | Without backend (default) | With backend |
+| | Without backend | With backend |
 |---|---|---|
 | Where RSVPs go | Only the guest's own browser | Your private Google Sheet |
-| Dashboard shows | RSVPs made on that device only | **All** RSVPs, live |
-| Passcode checked | In the browser (visible in page source) | On Google's servers (secret) |
-| Export to Excel / CSV | ✅ (device data) | ✅ (full guest list) |
+| Guest list dashboard | Stays locked | Unlocks, showing **all** RSVPs, live |
+| Passcode checked | — nothing to check it against | On Google's servers (secret) |
+| Export to Excel / CSV | — | ✅ (full guest list) |
+
+There is deliberately no passcode anywhere in the website's files. Every
+file the site serves — including `config.js` — is downloaded by every
+visitor and readable with "View source", so a passcode kept there would be
+public, and a check performed in the visitor's own browser is a check they
+control. Without a backend the dashboard therefore stays locked rather
+than pretending to be protected; RSVPs are still collected and still saved
+on each guest's own device.
 
 ## Step 1 — Create the Google Sheet
 

@@ -9,14 +9,42 @@
         content="You are joyfully invited to celebrate the wedding of Ann Sweety Saju and Maschio Silvester on September 24, 2026, at the Cathedral Church of The Redemption, New Delhi.">
     <meta name="theme-color" content="#f8ead0">
 
-    <!-- Typography: Fraunces (editorial display serif) + Manrope (grotesque sans) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Content Security Policy. The page loads scripts only from itself and
+         the two SRI-pinned CDNs, talks to only the RSVP backend, and frames
+         only Google Maps — so an injected script tag, a stolen-data POST to
+         someone else's server, and an injected frame are all refused even
+         if markup were ever injected into the page.
+         The one inline script (the preloader failsafe at the end of <body>)
+         is allowed by its SHA-256 hash, so it still runs while arbitrary
+         inline script does not. Editing that script means recomputing the
+         hash; the browser console names the expected value if they diverge.
+         'unsafe-inline' stays in style-src only: GSAP animates by writing
+         inline styles, and injected CSS cannot execute script.
+         Note: frame-ancestors cannot be set from a <meta> tag — see the
+         clickjacking note in the audit if a real header ever becomes
+         available (GitHub Pages cannot send custom headers). -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'sha256-AnDpA48iq+Ir60UTB3m4yf8DxW+1HeWUvfqh9JcryWQ=';
+                 style-src 'self' 'unsafe-inline';
+                 font-src 'self';
+                 img-src 'self' data:;
+                 connect-src 'self' https://script.google.com;
+                 frame-src https://maps.google.com https://www.google.com;
+                 form-action 'self';
+                 base-uri 'none';
+                 object-src 'none'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!-- Typography: Fraunces (editorial display serif) + Manrope (grotesque
+         sans), self-hosted — see the @font-face block at the top of style.css.
+         The two faces the hero needs are preloaded so they are fetched in
+         parallel with the stylesheet instead of after it. The italic is not
+         preloaded: it first appears further down the page. -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@300..700&display=swap"
-        rel="stylesheet">
+    <link rel="preload" href="fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 
     <link rel="stylesheet" href="style.css">
 
@@ -37,8 +65,10 @@
     <meta name="twitter:image"
         content="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop">
 
-    <!-- Wedding content configuration -->
-    <script src="config.js"></script>
+    <!-- Wedding content configuration. Deferred like every other script, so
+         it stays out of the render path; deferred scripts still run in
+         document order, so it is always in place before script.js. -->
+    <script src="config.js" defer></script>
 
     <noscript>
         <style>
@@ -63,7 +93,7 @@
         <div class="preloader-curtain curtain-b"></div>
     </div>
 
-    <!-- THREE.JS SILK BACKDROP (visible behind hero & footer) -->
+    <!-- WEBGL SILK BACKDROP (visible behind hero & footer) -->
     <canvas id="silk-canvas" aria-hidden="true"></canvas>
 
     <!-- CUSTOM CURSOR (fine pointers only) -->
@@ -238,7 +268,7 @@
                                     <path d="M7 17L17 7M17 7H8M17 7v9" fill="none" stroke="currentColor"
                                         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg></a>
-                            <button class="text-btn" type="button" onclick="addToCalendar('ceremony')">Add to
+                            <button class="text-btn" type="button" data-calendar="ceremony">Add to
                                 calendar<svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"
                                         stroke-linecap="round" />
@@ -266,7 +296,7 @@
                                     <path d="M7 17L17 7M17 7H8M17 7v9" fill="none" stroke="currentColor"
                                         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg></a>
-                            <button class="text-btn" type="button" onclick="addToCalendar('reception')">Add to
+                            <button class="text-btn" type="button" data-calendar="reception">Add to
                                 calendar<svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.5"
                                         stroke-linecap="round" />
@@ -491,23 +521,21 @@
         </div>
     </div>
 
-    <!-- Libraries: GSAP + ScrollTrigger, Lenis smooth scroll, Three.js.
-         SRI-pinned; if any fails to load the page degrades to a static,
-         fully readable document (script.js feature-detects each one). -->
+    <!-- Libraries: GSAP + ScrollTrigger, Lenis smooth scroll. SRI-pinned;
+         if any fails to load the page degrades to a static, fully readable
+         document (script.js feature-detects each one). All deferred, so
+         they download in parallel and never block parsing. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
         integrity="sha512-7eHRwcbYkK4d9g/6tD/mhkf++eoTHwpNM9woBxtPUBWm67zeAfFC+HrdoE2GanKeocly/VxeLvIqwvCdk7qScg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
         integrity="sha512-onMTRKJBKz8M1TnqqDuGBlowlH0ohFzMXYRNebz+yOcc5TQr/zAKsthzhuv0hiyUKEiQEQXEynnXCvNTOk50dg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"
         integrity="sha384-tKsJDT6PlUI0pSBt9/sBKJluKgA19/a6mBrDsZaXotLB4ZYfMGM6xt6/WgGpYhTm"
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
-        integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
 
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 
     <!-- Failsafe: if script.js never boots (e.g. it failed to download on a
          flaky connection), remove the opaque preloader curtain so the page

@@ -10,21 +10,28 @@
  * Quick version:
  *   1. Create a Google Sheet, open Extensions → Apps Script, and paste
  *      this whole file over the default Code.gs.
- *   2. Change ADMIN_PASSCODE below to your own secret.
+ *   2. Set the passcode in ⚙ Project Settings → Script Properties, as
+ *      a property named ADMIN_PASSCODE. It is deliberately NOT in this
+ *      file: the website repository is public, so anything written here
+ *      is published — and stays in the git history even after it is
+ *      edited out.
  *   3. Deploy → New deployment → Web app:
  *        Execute as: Me   ·   Who has access: Anyone
  *   4. Copy the web app URL (ends in /exec) into config.js → backendUrl.
  *
  * After editing this file you must publish a new version:
  * Deploy → Manage deployments → ✏️ → Version: New version → Deploy.
+ * (Changing the script property alone takes effect immediately.)
  */
 
-// ⚠️ CHANGE THIS. It is the passcode for the guest-list dashboard.
-// It lives only in your Google account — website visitors cannot see it.
-var ADMIN_PASSCODE = "2026annwedsmaschio";
+// The name of the script property holding the dashboard passcode. Until
+// that property is set the dashboard cannot be unlocked at all — every
+// privileged request is refused rather than falling open.
+var PASSCODE_PROPERTY = "ADMIN_PASSCODE";
 
 var SHEET_NAME = "RSVPs";
-var HEADERS = ["Timestamp", "Name", "Email", "Attendance", "Guests", "Diet", "Wishes"];
+var HEADERS = ["Timestamp", "Name", "Phone", "Attendance", "Guests", "Wishes"];
+var PHONE_COLUMN = 3;
 var MAX_ENTRIES = 5000; // safety cap so an abusive script can't grow the sheet forever
 
 // ------------------------------------------------------------------
@@ -54,27 +61,38 @@ function doPost(e) {
 // ---- public: a guest submits an RSVP (no passcode needed) ----
 function handleRsvp_(body) {
   var name = clean_(body.name, 120);
-  var email = clean_(body.email, 160);
-  if (!name || !email) return json_({ ok: false, error: "missing_fields" });
+  var phone = digits_(body.phone);
+  if (!name || phone.length !== 10) return json_({ ok: false, error: "missing_fields" });
 
   var attendance = body.attendance === "attending" ? "attending" : "declined";
   var guests = parseInt(body.guests, 10);
   if (isNaN(guests) || guests < 0) guests = 0;
   if (guests > 20) guests = 20;
-  var diet = clean_(body.diet, 40) || "none";
   var wishes = clean_(body.wishes, 1000);
-  var timestamp = clean_(body.timestamp, 40) ||
-    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  // Generated here, not taken from the request: a client-supplied
+  // timestamp can be set to anything, including a date that reorders the
+  // guest list or hides an entry among older rows.
+  var timestamp = Utilities.formatDate(
+    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
   // serialize concurrent submissions so rows never interleave
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     var sheet = getSheet_();
-    if (sheet.getLastRow() - 1 >= MAX_ENTRIES) {
-      return json_({ ok: false, error: "list_full" });
+    var row = [timestamp, name, phone, attendance, guests, wishes];
+    // The same guest answering twice — retrying after a bad connection, or
+    // genuinely changing their mind — updates their row instead of adding a
+    // second, contradicting one.
+    var existing = findGuestRow_(sheet, name, phone);
+    if (existing > 0) {
+      sheet.getRange(existing, 1, 1, HEADERS.length).setValues([row]);
+    } else {
+      if (sheet.getLastRow() - 1 >= MAX_ENTRIES) {
+        return json_({ ok: false, error: "list_full" });
+      }
+      sheet.appendRow(row);
     }
-    sheet.appendRow([timestamp, name, email, attendance, guests, diet, wishes]);
   } finally {
     lock.releaseLock();
   }
@@ -95,11 +113,10 @@ function handleList_(body) {
     return {
       timestamp: cellToString_(r[0]),
       name: String(r[1]),
-      email: String(r[2]),
+      phone: String(r[2]),
       attendance: String(r[3]),
       guests: Number(r[4]) || 0,
-      diet: String(r[5]),
-      wishes: String(r[6])
+      wishes: String(r[5])
     };
   });
   return json_({ ok: true, entries: entries });
@@ -133,17 +150,48 @@ function getSheet_() {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADERS);
     sheet.setFrozenRows(1);
+    // plain text, so a phone number never loses a leading zero and is
+    // never reinterpreted as a number in scientific notation
+    sheet.getRange(1, PHONE_COLUMN, sheet.getMaxRows(), 1).setNumberFormat("@");
   }
   return sheet;
 }
 
+// Row number of an existing entry for this guest, or 0 for a new guest.
+// "The same guest" means the same name AND the same phone number, so two
+// people sharing one number still get a row each.
+function findGuestRow_(sheet, name, phone) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  var rows = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  var key = name.toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    if (digits_(rows[i][2]) === phone &&
+      String(rows[i][1]).trim().toLowerCase() === key) {
+      return i + 2; // +1 for the header row, +1 because getValues is 0-based
+    }
+  }
+  return 0;
+}
+
 function passcodeOk_(supplied) {
-  var a = String(supplied || "");
-  var b = String(ADMIN_PASSCODE);
-  if (a.length !== b.length) return false;
-  var diff = 0; // compare every character so timing reveals nothing
-  for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  var expected = PropertiesService.getScriptProperties().getProperty(PASSCODE_PROPERTY);
+  // Fail closed: with no passcode configured there is nothing to check
+  // against, so no request is privileged.
+  if (!expected) return false;
+
+  // Compared as fixed-length digests, so neither the timing of the loop
+  // nor an early length check reveals anything about the real passcode.
+  var a = sha256_(String(supplied == null ? "" : supplied));
+  var b = sha256_(expected);
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
+}
+
+function sha256_(text) {
+  return Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
 }
 
 function clean_(v, max) {
@@ -151,6 +199,14 @@ function clean_(v, max) {
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .trim()
     .slice(0, max);
+}
+
+// A plain 10-digit local number. Anything else that arrives (spaces,
+// dashes, a +91 prefix) is stripped; when a country code is present the
+// last 10 digits are the ones kept, matching what the website sends.
+function digits_(v) {
+  var d = String(v == null ? "" : v).replace(/\D/g, "");
+  return d.length > 10 ? d.slice(-10) : d;
 }
 
 function cellToString_(v) {

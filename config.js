@@ -17,24 +17,23 @@ const WEDDING_CONFIG = {
     // times used for display and the calendar file.)
     countdownTarget: "2026-09-24T17:00:00+05:30",
 
-    // --- GUEST LIST BACKEND (recommended — see BACKEND_SETUP.md) ---
+    // --- GUEST LIST BACKEND (required for the dashboard — see BACKEND_SETUP.md) ---
     // URL of your Google Apps Script web app (ends in "/exec"). When set:
     //   • every RSVP is delivered to your private Google Sheet, from ANY
     //     guest's device — this becomes the real, shared guest list;
     //   • the "Guest list" dashboard (footer) asks for the passcode you set
-    //     inside the Apps Script, and the check happens on Google's servers.
-    //     That passcode is NOT in this file and NOT visible in page source;
+    //     as a Script Property inside the Apps Script, and the check happens
+    //     on Google's servers. That passcode is NOT in this file and NOT
+    //     visible in page source;
     //   • the dashboard shows live data from the Sheet, with built-in
     //     Export to Excel (.xlsx) and CSV.
-    // Leave blank to run in local-only demo mode (see adminPasscode below).
+    //
+    // There is deliberately no passcode in this file. Everything here is
+    // served to every visitor and is readable with "View source", so a
+    // passcode stored here would not be a secret. With backendUrl blank the
+    // site still collects RSVPs (saved on the guest's own device) but the
+    // dashboard stays locked, rather than being guarded by a published code.
     backendUrl: "https://script.google.com/macros/s/AKfycby7_YWwruAx5qCM_Rnk5eXGoSsw5WrneCKo6fqw2H0Fi4qZs4pINxG0r-X6Nk5Ytwlq/exec",
-
-    // Passcode for the DEMO (local-only) dashboard, used ONLY while
-    // backendUrl above is blank. In that mode the code is checked in the
-    // guest's own browser and is visible to anyone who views the page
-    // source — treat it as a light deterrent, not real security. Once
-    // backendUrl is set, this value is ignored entirely.
-    adminPasscode: "annwedsmaschio2026",
 
     // Optional extra: a generic form-backend endpoint (e.g. Formspree,
     // Getform) that receives a JSON copy of each RSVP — handy for email

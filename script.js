@@ -3,8 +3,9 @@
    A modern editorial wedding invitation.
 
    Motion:   GSAP + ScrollTrigger (choreography), Lenis (smooth
-             scroll), Three.js (flowing silk shader + drifting
-             champagne dust behind the hero and footer).
+             scroll), and a small hand-rolled WebGL backdrop (flowing
+             silk shader + drifting champagne dust behind the hero
+             and footer).
    Data:     window.WEDDING_CONFIG (config.js) drives all copy.
              RSVPs persist to localStorage and, when a backend is
              configured (config.backendUrl → Google Apps Script +
@@ -28,7 +29,6 @@
     const hasGSAP = typeof window.gsap !== "undefined";
     const hasScrollTrigger = hasGSAP && typeof window.ScrollTrigger !== "undefined";
     const hasLenis = typeof window.Lenis !== "undefined";
-    const hasThree = typeof window.THREE !== "undefined";
 
     if (hasScrollTrigger) gsap.registerPlugin(ScrollTrigger);
 
@@ -184,33 +184,57 @@
     }
 
     // ============================================================
-    // THREE.JS — FLOWING SILK + CHAMPAGNE DUST
+    // FLOWING SILK + CHAMPAGNE DUST — WebGL
     // ============================================================
+    // The whole scene is one fullscreen quad running a domain-warped fbm
+    // shader, plus a few drifting points. That needs no scene graph, no
+    // camera and no geometry pipeline, so it talks to the WebGL context
+    // directly instead of pulling ~590 KB of Three.js onto the critical
+    // path. Same output, and the page has one fewer CDN to depend on.
     const Silk = (() => {
         const canvas = $("#silk-canvas");
-        if (!canvas || !hasThree) return { active: false };
+        if (!canvas) return { active: false };
 
-        let renderer;
+        const GL_OPTS = {
+            antialias: false, alpha: false, depth: false, stencil: false,
+            preserveDrawingBuffer: false, powerPreference: "low-power"
+        };
+        let gl = null;
         try {
-            renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "low-power" });
-        } catch (e) {
+            gl = canvas.getContext("webgl", GL_OPTS) || canvas.getContext("experimental-webgl", GL_OPTS);
+        } catch (e) { /* WebGL blocked or unavailable */ }
+        if (!gl) {
             canvas.style.display = "none";
             return { active: false };
         }
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        function compile(type, src) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, src);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
 
-        const uniforms = {
-            uTime: { value: 0 },
-            uRes: { value: new THREE.Vector2(1, 1) },
-            uMouse: { value: new THREE.Vector2(0.5, 0.5) }
-        };
+        function link(vertSrc, fragSrc) {
+            const vs = compile(gl.VERTEX_SHADER, vertSrc);
+            const fs = compile(gl.FRAGMENT_SHADER, fragSrc);
+            if (!vs || !fs) return null;
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vs);
+            gl.attachShader(prog, fs);
+            gl.linkProgram(prog);
+            gl.deleteShader(vs);
+            gl.deleteShader(fs);
+            return gl.getProgramParameter(prog, gl.LINK_STATUS) ? prog : null;
+        }
 
-        const silkMat = new THREE.ShaderMaterial({
-            uniforms,
-            vertexShader: "void main(){ gl_Position = vec4(position, 1.0); }",
-            fragmentShader: [
+        const silkProgram = link(
+            "attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }",
+            [
                 "precision highp float;",
                 "uniform float uTime;",
                 "uniform vec2 uRes;",
@@ -259,53 +283,102 @@
                 "  gl_FragColor = vec4(col, 1.0);",
                 "}"
             ].join("\n")
-        });
-        scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), silkMat));
+        );
+
+        // The dust sprite was a 64px canvas holding a radial gradient; the
+        // same falloff is two mix() calls here, so there is no texture to
+        // upload and no second canvas to keep alive.
+        const dustProgram = link(
+            [
+                "attribute vec2 aDust;",
+                "uniform float uSize;",
+                "void main(){ gl_Position = vec4(aDust, 0.0, 1.0); gl_PointSize = uSize; }"
+            ].join("\n"),
+            [
+                "precision mediump float;",
+                "void main(){",
+                "  float r = length(gl_PointCoord - 0.5) * 2.0;",
+                "  float a = r < 0.4 ? mix(0.9, 0.28, r / 0.4) : mix(0.28, 0.0, (r - 0.4) / 0.6);",
+                "  gl_FragColor = vec4(0.690, 0.541, 0.314, a * 0.55);",
+                "}"
+            ].join("\n")
+        );
+
+        if (!silkProgram) {
+            canvas.style.display = "none";
+            return { active: false };
+        }
+
+        // fullscreen quad as a triangle strip — no index buffer needed
+        const quadBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        const aPos = gl.getAttribLocation(silkProgram, "aPos");
+        const uTime = gl.getUniformLocation(silkProgram, "uTime");
+        const uRes = gl.getUniformLocation(silkProgram, "uRes");
+        const uMouse = gl.getUniformLocation(silkProgram, "uMouse");
 
         // drifting champagne dust
         const DUST = 110;
-        const positions = new Float32Array(DUST * 3);
+        const positions = new Float32Array(DUST * 2);
         const speeds = new Float32Array(DUST);
         for (let i = 0; i < DUST; i++) {
-            positions[i * 3] = Math.random() * 2 - 1;
-            positions[i * 3 + 1] = Math.random() * 2 - 1;
-            positions[i * 3 + 2] = 0;
+            positions[i * 2] = Math.random() * 2 - 1;
+            positions[i * 2 + 1] = Math.random() * 2 - 1;
             speeds[i] = 0.02 + Math.random() * 0.06;
         }
-        const dustGeo = new THREE.BufferGeometry();
-        dustGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        const dustBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, dustBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+        const aDust = dustProgram ? gl.getAttribLocation(dustProgram, "aDust") : -1;
+        const uSize = dustProgram ? gl.getUniformLocation(dustProgram, "uSize") : null;
 
-        const sprite = (() => {
-            const c = document.createElement("canvas");
-            c.width = c.height = 64;
-            const ctx = c.getContext("2d");
-            const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-            g.addColorStop(0, "rgba(176, 138, 80, 0.9)");
-            g.addColorStop(0.4, "rgba(176, 138, 80, 0.28)");
-            g.addColorStop(1, "rgba(176, 138, 80, 0)");
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, 64, 64);
-            const tex = new THREE.CanvasTexture(c);
-            return tex;
-        })();
+        let mouseX = 0.5, mouseY = 0.5;
+        let resWidth = 1, resHeight = 1;
+        let pixelRatio = 1;
+        let time = 0;
 
-        const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-            size: 0.02,
-            map: sprite,
-            transparent: true,
-            opacity: 0.55,
-            depthWrite: false,
-            blending: THREE.NormalBlending
-        }));
-        scene.add(dust);
+        function draw() {
+            gl.useProgram(silkProgram);
+            gl.uniform1f(uTime, time);
+            gl.uniform2f(uRes, resWidth, resHeight);
+            gl.uniform2f(uMouse, mouseX, mouseY);
+            gl.disable(gl.BLEND);
+            gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            if (!dustProgram) return;
+            gl.useProgram(dustProgram);
+            gl.uniform1f(uSize, pixelRatio);
+            gl.enable(gl.BLEND);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+            gl.bindBuffer(gl.ARRAY_BUFFER, dustBuffer);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, positions);
+            gl.enableVertexAttribArray(aDust);
+            gl.vertexAttribPointer(aDust, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.POINTS, 0, DUST);
+        }
 
         function resize() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
-            const w = window.innerWidth, h = window.innerHeight;
-            renderer.setPixelRatio(dpr);
-            renderer.setSize(w, h, false);
-            uniforms.uRes.value.set(w * dpr, h * dpr);
-            if (reducedMotion) renderer.render(scene, camera);
+            // The shader is fragment-bound (four 5-octave fbm evaluations per
+            // pixel), so the pixel ratio is capped well below the screen's on
+            // phones. It draws a soft, out-of-focus gradient — the lost
+            // sharpness is invisible, and it roughly halves the pixels shaded.
+            const cap = window.innerWidth < 768 ? 1.25 : 1.5;
+            const dpr = Math.min(window.devicePixelRatio || 1, cap);
+            const w = Math.max(1, Math.floor(window.innerWidth * dpr));
+            const h = Math.max(1, Math.floor(window.innerHeight * dpr));
+            pixelRatio = dpr;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            gl.viewport(0, 0, w, h);
+            resWidth = w;
+            resHeight = h;
+            if (reducedMotion) draw();
         }
         resize();
         // Debounced: on mobile the browser fires resize for every chrome
@@ -332,6 +405,12 @@
             }, { passive: true });
         }
 
+        // A lost context (GPU reset, tab backgrounded on mobile) leaves every
+        // buffer and program invalid. Preventing the default keeps the canvas
+        // from going permanently black; the loop idles until it is restored.
+        let contextLost = false;
+        canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); contextLost = true; }, false);
+
         // only render while the canvas can actually be seen (hero / footer)
         let heroVisible = true, footerVisible = false, pageVisible = true;
         const io = new IntersectionObserver((entries) => {
@@ -345,37 +424,37 @@
         if (footerEl) io.observe(footerEl);
         document.addEventListener("visibilitychange", () => { pageVisible = !document.hidden; });
 
-        const clock = new THREE.Clock();
-        let elapsed = 0;
+        let lastFrame = 0;
 
-        function frame() {
+        function frame(now) {
             requestAnimationFrame(frame);
-            if (!pageVisible || (!heroVisible && !footerVisible)) return;
-            const dt = Math.min(clock.getDelta(), 0.05);
-            elapsed += dt;
-            uniforms.uTime.value = elapsed;
-            uniforms.uMouse.value.x += (mouseTarget.x - uniforms.uMouse.value.x) * 0.04;
-            uniforms.uMouse.value.y += (mouseTarget.y - uniforms.uMouse.value.y) * 0.04;
+            if (contextLost || !pageVisible || (!heroVisible && !footerVisible)) {
+                lastFrame = now; // don't bank the paused time into one huge step
+                return;
+            }
+            const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 0;
+            lastFrame = now;
+            time += dt;
+            mouseX += (mouseTarget.x - mouseX) * 0.04;
+            mouseY += (mouseTarget.y - mouseY) * 0.04;
 
-            const pos = dustGeo.attributes.position.array;
             for (let i = 0; i < DUST; i++) {
-                pos[i * 3 + 1] += speeds[i] * dt;
-                pos[i * 3] += Math.sin(elapsed * 0.4 + i) * 0.00016;
-                if (pos[i * 3 + 1] > 1.05) {
-                    pos[i * 3 + 1] = -1.05;
-                    pos[i * 3] = Math.random() * 2 - 1;
+                positions[i * 2 + 1] += speeds[i] * dt;
+                positions[i * 2] += Math.sin(time * 0.4 + i) * 0.00016;
+                if (positions[i * 2 + 1] > 1.05) {
+                    positions[i * 2 + 1] = -1.05;
+                    positions[i * 2] = Math.random() * 2 - 1;
                 }
             }
-            dustGeo.attributes.position.needsUpdate = true;
 
-            renderer.render(scene, camera);
+            draw();
         }
 
         if (reducedMotion) {
-            uniforms.uTime.value = 12;
-            renderer.render(scene, camera);
+            time = 12;
+            draw();
         } else {
-            frame();
+            requestAnimationFrame(frame);
         }
 
         return { active: true };
@@ -895,7 +974,7 @@
             .replace(/\r?\n/g, "\\n");
     }
 
-    window.addToCalendar = function (type) {
+    function addToCalendar(type) {
         const evt = config.events && config.events[type];
         if (!evt) return;
 
@@ -947,16 +1026,23 @@
         link.remove();
         // the blob is retained until revoked; give the click a moment to start
         setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-    };
+    }
+
+    // Bound here rather than with an inline onclick="…" attribute, so the
+    // page needs no script-src exception for inline handlers.
+    $$("[data-calendar]").forEach(btn => {
+        btn.addEventListener("click", () => addToCalendar(btn.getAttribute("data-calendar")));
+    });
 
     // ============================================================
     // ADMIN DASHBOARD (passcode-protected guest list)
     //
-    // Backend mode (config.backendUrl set): the passcode is sent to the
-    // Google Apps Script backend, verified on Google's servers, and the
-    // full guest list (all guests, all devices) comes back with it.
-    // Local mode (no backendUrl): falls back to the on-device list and
-    // the config.adminPasscode check (demo only — see config.js).
+    // The passcode is sent to the Google Apps Script backend, verified on
+    // Google's servers, and the full guest list (all guests, all devices)
+    // comes back with it. Nothing here can authorise anyone on its own:
+    // with no backendUrl configured the dashboard simply stays locked,
+    // because a passcode checked in the visitor's own browser — against a
+    // value shipped in the page — protects nothing.
     // ============================================================
     const adminModal = $("#admin-modal");
     const adminLockForm = $("#admin-lock");
@@ -989,10 +1075,9 @@
     $("#admin-trigger").addEventListener("click", () => {
         if (adminUnlocked) {
             // reopening must show current data, not whatever was on screen at
-            // unlock time — in local mode that means re-reading this device's
-            // list, which is the only place new RSVPs have landed
-            if (backendUrl()) refreshAdminData();
-            else renderAdmin(getRSVPs(), "local");
+            // unlock time. Unlocking only ever happens against the backend,
+            // so there is always somewhere to re-read from.
+            refreshAdminData();
             showAdminDashboard();
         } else {
             showAdminLock();
@@ -1036,14 +1121,10 @@
         }
 
         if (!backendUrl()) {
-            // local demo mode: client-side check (see note in config.js)
-            if (code === (config.adminPasscode || "annwedsmaschio2026")) {
-                adminUnlocked = true;
-                renderAdmin(getRSVPs(), "local");
-                showAdminDashboard();
-            } else {
-                lockFail("Incorrect passcode.");
-            }
+            // No backend, so there is nothing that can check a passcode
+            // anywhere but in this browser — where the guest controls both
+            // the code and the check. Refuse rather than pretend.
+            lockFail("The guest list isn't connected yet. See BACKEND_SETUP.md.");
             return;
         }
 
@@ -1343,10 +1424,9 @@
 
     // ---- Clear guest list (passcode-protected) ----
     // The button only reveals a confirmation panel; nothing is deleted
-    // until the access passcode is typed again. In backend mode the code
-    // travels with the "clear" action and is verified on Google's servers
-    // (same check as unlocking); in local demo mode it is checked against
-    // config.adminPasscode, like the lock screen.
+    // until the access passcode is typed again. The code travels with the
+    // "clear" action and is verified on Google's servers — the same check
+    // as unlocking, so a tampered-with page cannot skip it.
     const clearConfirm = $("#admin-clear-confirm");
     const clearPasscodeInput = $("#admin-clear-passcode");
     const clearDeleteBtn = $("#admin-clear-delete-btn");
@@ -1390,15 +1470,9 @@
         }
 
         if (adminDataSource !== "server") {
-            // local demo mode: same client-side check as the lock screen
-            if (code === (config.adminPasscode || "annwedsmaschio2026")) {
-                saveRSVPs([]);
-                hideClearConfirm();
-                renderAdmin(getRSVPs(), "local");
-                renderWishes();
-            } else {
-                clearFail("Incorrect passcode.");
-            }
+            // Nothing to clear on the server, and no way to check a passcode
+            // without one — the dashboard cannot be unlocked in this state.
+            clearFail("The guest list isn't connected yet. See BACKEND_SETUP.md.");
             return;
         }
 
