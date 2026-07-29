@@ -35,8 +35,98 @@
     const $ = (sel, root) => (root || document).querySelector(sel);
     const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
+    // ============================================================
+    // INPUT SANITATION
+    // ============================================================
+    // Guest-typed text reaches four places that each read it differently:
+    // the DOM (HTML), the .xlsx export (XML), the .csv export (formulas),
+    // and the couple's Google Sheet (also formulas). Nothing is "sanitised
+    // once and safe everywhere" — the rule here is *clean on the way in,
+    // encode on the way out*, with the encoding chosen per destination.
+    //
+    // These functions are the "way in" half, and they are a convenience,
+    // not the defence: anything running in this page can be edited from
+    // devtools, so the copies in backend/google-apps-script/Code.gs are
+    // what actually protect the guest list. Both are kept in step.
+
+    const NAME_MAX = 120;    // matches clean_(body.name, 120) on the server
+    const WISHES_MAX = 1000; // matches clean_(body.wishes, 1000)
+    const GUESTS_MAX = 20;   // server clamp; the stepper's own cap is lower
+
+    // C0/C1 controls, DEL, and the two Unicode line separators. A newline or
+    // a tab smuggled into a name would split the row across cells in the CSV
+    // export and across lines in the Sheet.
+    const CTRL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
+    // Bidirectional overrides. These re-order how everything after them is
+    // drawn, so a name can be made to render as something other than what is
+    // stored -- the dashboard, the exports and the Sheet would each show
+    // text the data does not actually say.
+    const BIDI_CHARS = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+    // Zero-width and other invisible formatting characters: padding that
+    // makes two different entries look identical on screen.
+    const INVISIBLE_CHARS = /[\u00ad\u180e\u200b-\u200d\u2060\ufeff]/g;
+
+    // The one place guest-typed text is cleaned. Order matters: normalise
+    // first so that two spellings of the same accented name compare equal in
+    // isSameGuest(), then strip what carries risk but no meaning.
+    function sanitizeText(value, max) {
+        let s = value == null ? "" : String(value);
+        // bound the work before running five regexes over a pasted novel
+        if (s.length > max * 4) s = s.slice(0, max * 4);
+        if (s.normalize) s = s.normalize("NFC");
+        return s
+            .replace(CTRL_CHARS, " ")
+            .replace(BIDI_CHARS, "")
+            .replace(INVISIBLE_CHARS, "")
+            .replace(/\s{2,}/g, " ")
+            .trim()
+            .slice(0, max);
+    }
+
+    // Phone: a plain 10-digit local number, no country code. Anything else the
+    // guest types or pastes (spaces, dashes, brackets, a +91 prefix) is stripped;
+    // when a pasted number carries a country code the last 10 digits are kept.
+    function tenDigits(value) {
+        const digits = String(value == null ? "" : value).replace(/\D/g, "");
+        return digits.length > 10 ? digits.slice(-10) : digits;
+    }
+
+    // One RSVP, forced into the shape the rest of the page assumes: every
+    // field present, every field the right type, every string sanitised.
+    // Returns null for anything that cannot be made into a usable entry.
+    //
+    // Everything that is *read back* goes through this — localStorage (which
+    // the guest and any script on this origin can rewrite) and the backend
+    // response alike. Trusting the shape of stored data is how a value that
+    // never passed the form ends up in an export.
+    function normalizeEntry(raw) {
+        if (!raw || typeof raw !== "object") return null;
+        const name = sanitizeText(raw.name, NAME_MAX);
+        if (!name) return null;
+        const guests = parseInt(raw.guests, 10);
+        return {
+            name: name,
+            phone: tenDigits(raw.phone),
+            // a whitelist, not a cleanup: any value that is not exactly
+            // "attending" is a decline
+            attendance: raw.attendance === "attending" ? "attending" : "declined",
+            guests: Math.min(Math.max(isNaN(guests) ? 0 : guests, 0), GUESTS_MAX),
+            wishes: sanitizeText(raw.wishes, WISHES_MAX),
+            timestamp: sanitizeText(raw.timestamp, 40)
+        };
+    }
+
+    function normalizeEntries(list) {
+        if (!Array.isArray(list)) return [];
+        return list.map(normalizeEntry).filter(Boolean);
+    }
+
+    // The "way out" half, for the DOM. Every guest-supplied value that is
+    // concatenated into an HTML string passes through this; the .xlsx and
+    // .csv writers have their own encoders further down, for their own
+    // syntaxes.
     function escapeHtml(unsafe) {
-        if (!unsafe) return "";
+        if (unsafe == null || unsafe === "") return "";
         return String(unsafe)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -62,7 +152,10 @@
     function getRSVPs() {
         try {
             const list = localStorage.getItem("wedding_rsvps");
-            return list ? JSON.parse(list) : [];
+            // Re-sanitised on the way out, not trusted because we wrote it:
+            // this store is plain text the guest can edit, and it feeds the
+            // wish wall, the dashboard's local mode and both exports.
+            return normalizeEntries(list ? JSON.parse(list) : []);
         } catch (e) {
             return [];
         }
@@ -729,20 +822,19 @@
     $("#guest-plus").addEventListener("click", () => { guestCount = Math.min(GUEST_MAX, guestCount + 1); refreshStepper(); });
     refreshStepper();
 
-    // Phone: a plain 10-digit local number, no country code. Anything else the
-    // guest types or pastes (spaces, dashes, brackets, a +91 prefix) is stripped
-    // as they go; when a pasted number carries a country code the last 10 digits
-    // are the ones we keep.
+    // Stripped as the guest types, with tenDigits() from the sanitation
+    // block above, so the field only ever holds what will be submitted.
     const phoneInput = $("#guest-phone");
-
-    function tenDigits(value) {
-        const digits = String(value).replace(/\D/g, "");
-        return digits.length > 10 ? digits.slice(-10) : digits;
-    }
 
     phoneInput.addEventListener("input", () => {
         const cleaned = tenDigits(phoneInput.value);
         if (cleaned !== phoneInput.value) phoneInput.value = cleaned;
+    });
+
+    // A custom validity message sticks until it is cleared, which would keep
+    // the form permanently un-submittable once the name check has fired.
+    $("#guest-name").addEventListener("input", (event) => {
+        event.target.setCustomValidity("");
     });
 
     // Collapsing is a max-height/opacity transition, so the guest stepper is
@@ -806,11 +898,28 @@
         phoneInput.value = tenDigits(phoneInput.value);
         if (!rsvpForm.reportValidity()) return;
 
-        const name = $("#guest-name").value.trim();
+        const nameInput = $("#guest-name");
+        const wishesInput = $("#wishes");
+        const name = sanitizeText(nameInput.value, NAME_MAX);
         const phone = tenDigits(phoneInput.value);
-        const attendance = $('input[name="attendance"]:checked', rsvpForm).value;
-        const wishes = $("#wishes").value.trim();
-        if (!name || phone.length !== 10) return;
+        const attendance = $('input[name="attendance"]:checked', rsvpForm).value === "attending"
+            ? "attending" : "declined";
+        const wishes = sanitizeText(wishesInput.value, WISHES_MAX);
+
+        // Show the guest what is actually going to be sent, rather than
+        // silently submitting something different from what is on screen.
+        if (nameInput.value !== name) nameInput.value = name;
+        if (wishesInput.value !== wishes) wishesInput.value = wishes;
+
+        // required + pattern already passed, so a failure here means the
+        // field held only characters sanitation removes. Say so instead of
+        // returning to a form that looks like nothing happened.
+        if (!name) {
+            nameInput.setCustomValidity("Please enter your name using letters or numbers.");
+            nameInput.reportValidity();
+            return;
+        }
+        if (phone.length !== 10) return;
 
         const now = new Date();
         const two = (n) => String(n).padStart(2, "0");
@@ -1140,7 +1249,7 @@
                 if (data && data.ok) {
                     adminUnlocked = true;
                     adminKey = code;
-                    renderAdmin(data.entries || [], "server");
+                    renderAdmin(normalizeEntries(data.entries), "server");
                     showAdminDashboard();
                 } else if (data && data.error === "unauthorized") {
                     lockFail("Incorrect passcode.");
@@ -1161,7 +1270,7 @@
             .then(data => {
                 adminRefreshBtn.disabled = false;
                 if (data && data.ok) {
-                    renderAdmin(data.entries || [], "server");
+                    renderAdmin(normalizeEntries(data.entries), "server");
                 } else if (data && data.error === "unauthorized") {
                     // passcode was changed on the server: lock again
                     adminUnlocked = false;
@@ -1175,6 +1284,12 @@
 
     adminRefreshBtn.addEventListener("click", refreshAdminData);
 
+    // `list` is expected to be already-normalised entries — normalizeEntries
+    // runs at the two points data enters (the backend response, and getRSVPs
+    // reading localStorage), not here. Re-normalising on every render would
+    // rebuild the objects each time, and the row-delete confirmation tracks
+    // its row by identity (entry === pendingDelete), so it would vanish the
+    // moment the table redrew.
     function renderAdmin(list, source) {
         adminData = Array.isArray(list) ? list : [];
 
@@ -1414,10 +1529,14 @@
     // ---- Export: CSV ----
     $("#export-csv-btn").addEventListener("click", () => {
         const quote = (v) => {
-            let s = String(v == null ? "" : v).replace(/"/g, '""').replace(/\r?\n/g, " ");
-            // guests type their own names/wishes: neutralise spreadsheet
-            // formula injection ("=cmd()", "+…", "-…", "@…") on export
-            if (/^[=+\-@]/.test(s)) s = "'" + s;
+            let s = String(v == null ? "" : v).replace(/"/g, '""').replace(/[\r\n]+/g, " ");
+            // Guests type their own names and wishes, and a spreadsheet reads
+            // a leading =, +, - or @ as the start of a formula rather than as
+            // text — so "=HYPERLINK(...)" or "=IMPORTXML(...)" would run when
+            // the couple opens the export. A leading tab or CR is stripped by
+            // Excel before that test, so those lead in to the same thing and
+            // are covered too. The apostrophe forces the cell to plain text.
+            if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
             return '"' + s + '"';
         };
         let csv = "\uFEFF" + ADMIN_COLUMNS.join(",") + "\r\n";

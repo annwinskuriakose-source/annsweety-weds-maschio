@@ -348,10 +348,14 @@
                     <div class="field" data-reveal>
                         <label for="guest-name">Full name</label>
                         <input type="text" id="guest-name" name="name" required autocomplete="name"
-                            placeholder="Johnathan Smith">
+                            maxlength="120" placeholder="Johnathan Smith">
                     </div>
                     <div class="field" data-reveal>
                         <label for="guest-phone">Phone number</label>
+                        <!-- No maxlength here, deliberately: pasting "+91 98765-43210" is
+                             meant to work, and a 10-character cap would clip the paste to
+                             "+91 98765-" before the script could keep the last 10 digits.
+                             The pattern and tenDigits() constrain this field instead. -->
                         <input type="tel" id="guest-phone" name="phone" required autocomplete="tel"
                             inputmode="numeric" pattern="[0-9]{10}"
                             title="Please enter your 10-digit phone number, e.g. 9876543210"
@@ -388,7 +392,7 @@
 
                     <div class="field" data-reveal>
                         <label for="wishes">A wish for the couple <span class="optional">(optional)</span></label>
-                        <textarea id="wishes" name="wishes" rows="3"
+                        <textarea id="wishes" name="wishes" rows="3" maxlength="1000"
                             placeholder="Share a warm wish or note…"></textarea>
                     </div>
 
@@ -459,7 +463,8 @@
                 <p class="admin-lock-text">This dashboard is private.<br>Enter the passcode to view the guest list.</p>
                 <div class="admin-lock-row">
                     <input type="password" id="admin-passcode" class="admin-passcode-input" data-autofocus
-                        autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required>
+                        autocomplete="current-password" maxlength="200" placeholder="Passcode"
+                        aria-label="Passcode" required>
                     <button type="submit" class="modal-btn admin-unlock-btn" id="admin-unlock-btn">Unlock</button>
                 </div>
                 <p class="admin-lock-error" id="admin-lock-error" role="alert" hidden></p>
@@ -500,7 +505,7 @@
                         Re-enter the passcode to confirm.</p>
                     <div class="admin-lock-row">
                         <input type="password" id="admin-clear-passcode" class="admin-passcode-input"
-                            autocomplete="current-password" placeholder="Passcode"
+                            autocomplete="current-password" maxlength="200" placeholder="Passcode"
                             aria-label="Passcode to confirm clearing the guest list" required>
                         <button type="submit" class="modal-btn admin-clear-delete-btn"
                             id="admin-clear-delete-btn">Delete</button>
