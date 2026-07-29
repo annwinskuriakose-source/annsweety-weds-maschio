@@ -14,6 +14,12 @@
          only Google Maps — so an injected script tag, a stolen-data POST to
          someone else's server, and an injected frame are all refused even
          if markup were ever injected into the page.
+         connect-src must name BOTH Apps Script hosts: a request to the /exec
+         URL on script.google.com is answered with a redirect to
+         script.googleusercontent.com, and connect-src is enforced against
+         every hop of a redirect chain. Allowing only the first host lets the
+         request start and then kills the response, which surfaces as
+         "Couldn't reach the guest-list service".
          The one inline script (the preloader failsafe at the end of <body>)
          is allowed by its SHA-256 hash, so it still runs while arbitrary
          inline script does not. Editing that script means recomputing the
@@ -29,7 +35,7 @@
                  style-src 'self' 'unsafe-inline';
                  font-src 'self';
                  img-src 'self' data:;
-                 connect-src 'self' https://script.google.com;
+                 connect-src 'self' https://script.google.com https://script.googleusercontent.com;
                  frame-src https://maps.google.com https://www.google.com;
                  form-action 'self';
                  base-uri 'none';
